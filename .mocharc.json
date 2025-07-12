@@ -1,0 +1,16 @@
+{
+  "spec": "test/**/*.test.js",
+  "recursive": true,
+  "timeout": 5000,
+  "require": ["test/setup.js"],
+  "reporter": "spec",
+  "exit": true,
+  "bail": false,
+  "grep": "",
+  "invert": false,
+  "checkLeaks": true,
+  "globals": ["fetch", "Request", "Response", "Headers"],
+  "extension": ["js"],
+  "watch-files": ["src/**/*.js", "test/**/*.js"],
+  "watch-ignore": ["node_modules/**/*", "build/**/*"]
+}
