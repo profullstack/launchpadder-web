@@ -32,6 +32,7 @@ A federated, API-driven launch platform similar to Product Hunt, built with Svel
 - **Mocha + Chai** - Test framework and assertions
 - **ESLint + Prettier** - Code linting and formatting
 - **Nock** - HTTP mocking for tests
+- **Puppeteer** - Browser automation for JavaScript-rendered content
 
 ## 📁 Project Structure
 
@@ -125,20 +126,64 @@ pnpm test -- --grep "SubmissionService"
 pnpm test -- --grep "AIRewriter"
 ```
 
-## 📊 Enhanced Metadata Scraping
+## 📊 Advanced Metadata Scraping
 
-The platform features a sophisticated metadata extraction system with multiple layers of fallbacks:
+The platform features two sophisticated metadata extraction systems designed to handle both static and dynamic web content:
 
-### Core Features
+### 🎭 Puppeteer-Based Metadata Fetcher (Recommended)
 
-- **Multiple Image Extraction**: Prioritized extraction from Open Graph, Twitter Cards, Apple Touch Icons, and img tags
+**Perfect for modern web applications with client-side rendering (CSR)**
+
+#### Key Features
+- **JavaScript Execution**: Fully renders JavaScript-heavy applications (React, Vue, Angular, etc.)
+- **Dynamic Content Support**: Waits for content to load before extraction
+- **Browser Automation**: Uses real Chrome browser for accurate rendering
+- **Performance Optimized**: Configurable image loading, timeouts, and caching
+- **Viewport Control**: Customizable browser viewport for responsive testing
+- **Resource Management**: Automatic browser cleanup and memory management
+
+#### Usage Example
+
+```javascript
+import { PuppeteerMetadataFetcher } from './src/lib/services/puppeteer-metadata-fetcher.js';
+
+const fetcher = new PuppeteerMetadataFetcher({
+  timeout: 30000,
+  waitForTimeout: 3000,
+  enableImages: false, // Faster loading
+  enableCaching: true,
+  viewport: { width: 1280, height: 720 }
+});
+
+const metadata = await fetcher.fetchMetadata('https://spa-app.com');
+
+console.log({
+  title: metadata.title,
+  description: metadata.description,
+  hasJavaScript: metadata.hasJavaScript,
+  loadTime: metadata.loadTime,
+  viewport: metadata.viewport,
+  images: metadata.images,
+  structuredData: metadata.structuredData
+});
+
+// Always cleanup when done
+await fetcher.cleanup();
+```
+
+### 🔧 Enhanced Cheerio-Based Fetcher (Legacy)
+
+**Optimized for static HTML content and server-side rendered applications**
+
+#### Core Features
+- **Multiple Image Extraction**: Prioritized extraction from Open Graph, Twitter Cards, Apple Touch Icons
 - **Enhanced Favicon Detection**: Comprehensive favicon support including multiple sizes and formats
 - **Structured Data Parsing**: JSON-LD and Microdata extraction for rich content understanding
 - **Social Media Optimization**: Enhanced Twitter Cards and Open Graph metadata
 - **Content Type Support**: Handles PDFs, videos, and various media types
 - **Malformed HTML Resilience**: Regex fallbacks with HTML entity decoding
 
-### Usage Example
+#### Usage Example
 
 ```javascript
 import { EnhancedMetadataFetcher } from './src/lib/services/enhanced-metadata-fetcher.js';
@@ -150,16 +195,20 @@ const fetcher = new EnhancedMetadataFetcher({
   timeout: 10000
 });
 
-const metadata = await fetcher.fetchMetadata('https://example.com');
+const metadata = await fetcher.fetchMetadata('https://static-site.com');
+```
 
-console.log({
-  title: metadata.title,
-  description: metadata.description,
-  images: metadata.images,
-  favicons: metadata.favicons,
-  structuredData: metadata.structuredData,
-  social: metadata.social
-});
+### 🚀 Installation Requirements
+
+For Puppeteer-based fetching, Chrome must be installed:
+
+```bash
+# Install Chrome for Puppeteer
+npx puppeteer browsers install chrome
+
+# Or install during setup
+pnpm install
+npx puppeteer browsers install chrome
 ```
 
 ### Metadata Structure

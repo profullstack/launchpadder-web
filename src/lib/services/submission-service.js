@@ -3,13 +3,18 @@
  * Handles URL submission workflow including metadata fetching, AI rewriting, and database operations
  */
 
-import { metadataFetcher } from './metadata-fetcher.js';
+import { PuppeteerMetadataFetcher } from './puppeteer-metadata-fetcher.js';
 import { createAIRewriter } from './ai-rewriter.js';
 
 export class SubmissionService {
   constructor(options = {}) {
     this.supabase = options.supabase;
-    this.metadataFetcher = options.metadataFetcher || metadataFetcher;
+    this.metadataFetcher = options.metadataFetcher || new PuppeteerMetadataFetcher({
+      timeout: 30000,
+      waitForTimeout: 3000,
+      enableImages: false, // Faster loading for production
+      enableCaching: true
+    });
     this.aiRewriter = options.aiRewriter || createAIRewriter();
     this.maxRetries = options.maxRetries || 3;
     this.retryDelay = options.retryDelay || 1000;
@@ -113,8 +118,10 @@ export class SubmissionService {
         status: 'pending',
         tags: rewrittenMetadata.tags || [],
         images: {
-          main: originalMetadata.image,
-          favicon: originalMetadata.favicon
+          main: originalMetadata.images?.[0]?.url || originalMetadata.image,
+          favicon: originalMetadata.favicons?.[0]?.url || originalMetadata.favicon,
+          all: originalMetadata.images || [],
+          favicons: originalMetadata.favicons || []
         }
       };
 
@@ -410,6 +417,16 @@ export class SubmissionService {
    */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Cleanup resources (especially Puppeteer browser instances)
+   * Should be called when the service is no longer needed
+   */
+  async cleanup() {
+    if (this.metadataFetcher && typeof this.metadataFetcher.cleanup === 'function') {
+      await this.metadataFetcher.cleanup();
+    }
   }
 }
 
