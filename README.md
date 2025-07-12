@@ -7,6 +7,7 @@ A federated, API-driven launch platform similar to Product Hunt, built with Svel
 - **Frictionless URL Submission**: Simple URL input with automated metadata extraction
 - **Enhanced Metadata Scraping**: Advanced web scraping with fallback mechanisms for malformed HTML
 - **AI-Generated Descriptions**: Intelligent content rewriting using OpenAI API
+- **Comprehensive AI Analysis**: Advanced content analysis, SEO optimization, sentiment analysis, and category detection
 - **Federated Submissions**: Automatic submission to multiple launch directories
 - **Real-time Processing**: Live updates and status tracking
 - **Monetization Ready**: Built-in payment integration for submission fees
@@ -42,7 +43,9 @@ A federated, API-driven launch platform similar to Product Hunt, built with Svel
 │   │   ├── services/           # Core business logic
 │   │   │   ├── metadata-fetcher.js         # Base metadata extraction
 │   │   │   ├── enhanced-metadata-fetcher.js # Advanced metadata scraping
+│   │   │   ├── puppeteer-metadata-fetcher.js # JavaScript-rendered content
 │   │   │   ├── ai-rewriter.js              # OpenAI integration
+│   │   │   ├── enhanced-ai-service.js      # Comprehensive AI analysis
 │   │   │   └── submission-service.js       # Complete submission workflow
 │   │   └── config/
 │   │       └── supabase.js     # Database configuration
@@ -124,6 +127,12 @@ pnpm test -- --grep "SubmissionService"
 
 # AI rewriter tests
 pnpm test -- --grep "AIRewriter"
+
+# Enhanced AI Service tests
+pnpm test -- --grep "EnhancedAIService"
+
+# Enhanced AI Integration tests
+pnpm test -- --grep "Enhanced AI Integration"
 ```
 
 ## 📊 Advanced Metadata Scraping
@@ -261,6 +270,186 @@ npx puppeteer browsers install chrome
 }
 ```
 
+## 🤖 Enhanced AI Service
+
+The platform features a comprehensive AI-powered analysis system that goes beyond basic content rewriting to provide deep insights and optimization recommendations.
+
+### 🧠 Core AI Features
+
+#### **Content Analysis**
+- **Readability Assessment**: Flesch Reading Ease scoring with difficulty levels
+- **Keyword Density Analysis**: Automatic keyword extraction and frequency analysis
+- **Content Length Optimization**: Title and description length recommendations
+- **Uniqueness Scoring**: Content originality assessment
+- **Completeness Evaluation**: Metadata completeness scoring
+
+#### **SEO Optimization**
+- **Title Optimization**: Length, structure, and keyword recommendations
+- **Description Enhancement**: Meta description optimization for search engines
+- **Keyword Suggestions**: AI-generated relevant keywords
+- **Meta Tag Generation**: Automatic Open Graph and Twitter Card suggestions
+- **Structured Data**: Schema.org markup recommendations
+
+#### **Sentiment Analysis**
+- **Emotional Tone Detection**: Positive, negative, or neutral sentiment analysis
+- **Confidence Scoring**: Reliability metrics for sentiment predictions
+- **Tone Recommendations**: Suggestions for improving content appeal
+- **Emotional Balance**: Analysis of emotional word usage
+
+#### **Category Detection**
+- **Industry Classification**: Automatic categorization (productivity, development, design, etc.)
+- **Confidence Metrics**: Reliability scoring for category predictions
+- **Tag Suggestions**: Relevant tags based on content analysis
+- **Secondary Categories**: Alternative classification options
+
+### 🚀 Usage Example
+
+```javascript
+import { createEnhancedAIService } from './src/lib/services/enhanced-ai-service.js';
+
+const aiService = createEnhancedAIService({
+  enableContentAnalysis: true,
+  enableSEOOptimization: true,
+  enableSentimentAnalysis: true,
+  enableCategoryDetection: true
+});
+
+const originalMetadata = {
+  title: 'Amazing Productivity App',
+  description: 'This app helps you manage tasks efficiently and boost your workflow.',
+  url: 'https://example.com/app'
+};
+
+const enhanced = await aiService.enhanceMetadata(originalMetadata);
+
+console.log({
+  // Enhanced content
+  title: enhanced.title,
+  description: enhanced.description,
+  tags: enhanced.tags,
+  
+  // AI Analysis
+  contentAnalysis: enhanced.aiEnhancements.contentAnalysis,
+  seoOptimization: enhanced.aiEnhancements.seoOptimization,
+  sentiment: enhanced.aiEnhancements.sentiment,
+  category: enhanced.aiEnhancements.category
+});
+
+// Cleanup when done
+await aiService.cleanup();
+```
+
+### 📊 Enhanced Analysis Structure
+
+```javascript
+{
+  // Enhanced content (AI-rewritten)
+  title: "AI-Enhanced Amazing Productivity App",
+  description: "AI-Improved description with better appeal",
+  tags: ["productivity", "ai-enhanced", "comprehensive"],
+  
+  // Comprehensive AI analysis
+  aiEnhancements: {
+    timestamp: "2024-01-01T00:00:00.000Z",
+    version: "1.0",
+    
+    // Content quality metrics
+    contentAnalysis: {
+      readabilityScore: { score: 75, level: "standard" },
+      keywordDensity: {
+        keywords: [
+          { word: "productivity", count: 2, density: "10.00" }
+        ],
+        totalWords: 20,
+        uniqueWords: 18
+      },
+      contentLength: { title: 25, description: 120 },
+      uniquenessScore: { score: 85, level: "high" },
+      completeness: { score: 80, completedFields: 4, totalFields: 5 }
+    },
+    
+    // SEO recommendations
+    seoOptimization: {
+      titleOptimization: {
+        suggestions: [],
+        score: 90,
+        optimal: true
+      },
+      descriptionOptimization: {
+        suggestions: ["Consider adding action words"],
+        score: 85,
+        optimal: true
+      },
+      keywordSuggestions: ["productivity", "app", "workflow"],
+      metaTagSuggestions: {
+        "og:title": "Amazing Productivity App",
+        "og:description": "Enhanced description",
+        "twitter:card": "summary_large_image"
+      },
+      structuredDataSuggestions: {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Amazing Productivity App"
+      }
+    },
+    
+    // Emotional analysis
+    sentiment: {
+      overall: "positive",
+      confidence: 0.8,
+      emotions: { positive: 2, negative: 0 },
+      tone: "positive",
+      recommendations: []
+    },
+    
+    // Content classification
+    category: {
+      primary: "productivity",
+      secondary: null,
+      confidence: 0.9,
+      tags: ["productivity"],
+      industry: "productivity"
+    }
+  }
+}
+```
+
+### ⚙️ Configuration Options
+
+```javascript
+const aiService = createEnhancedAIService({
+  // Feature toggles
+  enableContentAnalysis: true,
+  enableSEOOptimization: true,
+  enableSentimentAnalysis: true,
+  enableCategoryDetection: true,
+  
+  // Custom AI rewriter (optional)
+  aiRewriter: customAIRewriter
+});
+```
+
+### 🔄 Integration with Submission Service
+
+The Enhanced AI Service is seamlessly integrated into the submission workflow:
+
+```javascript
+const submissionService = new SubmissionService({
+  supabase: supabaseClient,
+  useEnhancedAI: true, // Enable comprehensive AI analysis
+  enhancedAIService: customAIService // Optional custom service
+});
+
+// Submissions automatically include AI analysis
+const submission = await submissionService.createSubmission({
+  url: 'https://example.com/app'
+}, userId);
+
+// Access AI analysis data
+console.log(submission.ai_analysis.contentAnalysis);
+console.log(submission.ai_analysis.seoOptimization);
+```
+
 ## 🔄 Submission Workflow
 
 The complete submission process includes:
@@ -300,6 +489,7 @@ Row Level Security (RLS) policies ensure data protection and proper access contr
 - [x] Core URL submission API endpoint
 - [x] Enhanced metadata scraping service
 - [x] AI description generation integration
+- [x] Enhanced AI Service with comprehensive analysis
 - [x] Comprehensive test coverage
 
 ### 🔄 In Progress

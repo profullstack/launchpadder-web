@@ -1,10 +1,11 @@
 /**
  * Submission Service
- * Handles URL submission workflow including metadata fetching, AI rewriting, and database operations
+ * Handles URL submission workflow including metadata fetching, AI enhancement, and database operations
  */
 
 import { PuppeteerMetadataFetcher } from './puppeteer-metadata-fetcher.js';
 import { createAIRewriter } from './ai-rewriter.js';
+import { createEnhancedAIService } from './enhanced-ai-service.js';
 
 export class SubmissionService {
   constructor(options = {}) {
@@ -16,6 +17,10 @@ export class SubmissionService {
       enableCaching: true
     });
     this.aiRewriter = options.aiRewriter || createAIRewriter();
+    this.enhancedAIService = options.enhancedAIService !== undefined
+      ? options.enhancedAIService
+      : createEnhancedAIService({ aiRewriter: this.aiRewriter });
+    this.useEnhancedAI = options.useEnhancedAI ?? true;
     this.maxRetries = options.maxRetries || 3;
     this.retryDelay = options.retryDelay || 1000;
     
@@ -106,17 +111,20 @@ export class SubmissionService {
       // Fetch metadata from URL
       const originalMetadata = await this.fetchMetadataWithRetry(url);
 
-      // Generate AI-rewritten content
-      const rewrittenMetadata = await this.rewriteMetadataWithRetry(originalMetadata);
+      // Generate AI-enhanced content
+      const enhancedMetadata = this.useEnhancedAI
+        ? await this.enhanceMetadataWithRetry(originalMetadata)
+        : await this.rewriteMetadataWithRetry(originalMetadata);
 
       // Prepare submission data
       const submissionRecord = {
         url,
         original_meta: originalMetadata,
-        rewritten_meta: rewrittenMetadata,
+        rewritten_meta: this.useEnhancedAI ? enhancedMetadata : enhancedMetadata,
+        ai_analysis: this.useEnhancedAI ? enhancedMetadata.aiEnhancements : null,
         submitted_by: userId,
         status: 'pending',
-        tags: rewrittenMetadata.tags || [],
+        tags: enhancedMetadata.tags || [],
         images: {
           main: originalMetadata.images?.[0]?.url || originalMetadata.image,
           favicon: originalMetadata.favicons?.[0]?.url || originalMetadata.favicon,
@@ -209,6 +217,40 @@ export class SubmissionService {
     }
 
     throw new Error(`Failed to rewrite metadata after ${this.maxRetries} attempts: ${lastError.message}`);
+  }
+
+  /**
+   * Enhances metadata with comprehensive AI analysis and retry logic
+   * @param {Object} metadata - The original metadata
+   * @returns {Promise<Object>} The enhanced metadata with AI insights
+   */
+  async enhanceMetadataWithRetry(metadata) {
+    if (!this.enhancedAIService) {
+      // Fallback to basic rewriting if enhanced AI service is not available
+      return await this.rewriteMetadataWithRetry(metadata);
+    }
+
+    let lastError;
+    
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await this.enhancedAIService.enhanceMetadata(metadata);
+      } catch (error) {
+        lastError = error;
+        
+        // Don't retry on authentication or quota errors
+        if (error.message.includes('Invalid OpenAI API key') ||
+            error.message.includes('quota')) {
+          throw error;
+        }
+
+        if (attempt < this.maxRetries) {
+          await this.sleep(this.retryDelay * attempt);
+        }
+      }
+    }
+
+    throw new Error(`Failed to enhance metadata after ${this.maxRetries} attempts: ${lastError.message}`);
   }
 
   /**
@@ -426,6 +468,9 @@ export class SubmissionService {
   async cleanup() {
     if (this.metadataFetcher && typeof this.metadataFetcher.cleanup === 'function') {
       await this.metadataFetcher.cleanup();
+    }
+    if (this.enhancedAIService && typeof this.enhancedAIService.cleanup === 'function') {
+      await this.enhancedAIService.cleanup();
     }
   }
 }

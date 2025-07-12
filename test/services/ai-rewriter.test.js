@@ -150,19 +150,24 @@ describe('AIRewriter', () => {
     });
 
     it('should handle rate limiting', async () => {
-      nock('https://api.openai.com')
+      // Create a more specific nock that matches the exact request
+      const scope = nock('https://api.openai.com')
         .post('/v1/chat/completions')
-        .reply(429, { 
-          error: { 
-            message: 'Rate limit exceeded',
-            type: 'rate_limit_exceeded'
-          } 
+        .reply(429, {
+          error: {
+            message: 'Rate limit exceeded for requests',
+            type: 'rate_limit_exceeded',
+            code: 'rate_limit_exceeded'
+          }
         });
 
       try {
         await rewriter.rewriteMetadata(originalMetadata);
         expect.fail('Should have thrown an error');
       } catch (error) {
+        // Check that the nock was actually called
+        expect(scope.isDone()).to.be.true;
+        // The error should be properly formatted by our formatError method
         expect(error.message).to.include('Rate limit exceeded');
       }
     });

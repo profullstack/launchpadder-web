@@ -252,21 +252,31 @@ Return your response as a JSON object with the following structure:
    */
   formatError(error) {
     const message = error.message || 'Unknown error';
-    const status = error.status || error.response?.status;
+    const status = error.status || error.response?.status || error.code;
+    
+    // Check for OpenAI-specific error properties
+    const errorType = error.type || error.error?.type;
+    const errorCode = error.code || error.error?.code;
 
-    if (status === 429 || message.toLowerCase().includes('rate limit')) {
+    // Check for rate limiting in various ways
+    if (status === 429 ||
+        status === '429' ||
+        errorType === 'rate_limit_exceeded' ||
+        errorCode === 'rate_limit_exceeded' ||
+        message.toLowerCase().includes('rate limit') ||
+        message.toLowerCase().includes('rate_limit_exceeded')) {
       return new Error('Rate limit exceeded. Please try again later.');
     }
 
-    if (status === 401) {
+    if (status === 401 || status === '401') {
       return new Error('Invalid OpenAI API key. Please check your configuration.');
     }
 
-    if (status === 403) {
+    if (status === 403 || status === '403') {
       return new Error('Access denied. Please check your OpenAI API permissions.');
     }
 
-    if (status >= 500) {
+    if (status >= 500 || (typeof status === 'string' && parseInt(status) >= 500)) {
       return new Error('OpenAI service temporarily unavailable. Please try again later.');
     }
 
