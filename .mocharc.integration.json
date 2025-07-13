@@ -1,0 +1,21 @@
+{
+  "spec": "test/integration/**/*.test.js",
+  "recursive": true,
+  "timeout": 20000,
+  "require": ["test/integration/setup.js"],
+  "reporter": "spec",
+  "exit": true,
+  "bail": false,
+  "checkLeaks": true,
+  "globals": ["fetch", "Request", "Response", "Headers"],
+  "extension": ["js"],
+  "watch-files": ["src/**/*.js", "test/integration/**/*.js"],
+  "watch-ignore": ["node_modules/**/*", "build/**/*", "coverage/**/*"],
+  "parallel": false,
+  "jobs": 1,
+  "slow": 2000,
+  "grep": "",
+  "invert": false,
+  "forbid-only": true,
+  "forbid-pending": false
+}
