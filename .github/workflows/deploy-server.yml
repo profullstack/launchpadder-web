@@ -1,0 +1,197 @@
+name: Deploy to Dedicated Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Code Quality and Security Checks
+  quality-checks:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Run ESLint
+      run: pnpm run lint
+
+    - name: Run Prettier check
+      run: pnpm run format:check
+
+    - name: Security audit
+      run: pnpm audit --audit-level moderate
+
+  # Run Tests
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Setup test environment
+      run: |
+        cp .env.test.example .env.test
+        echo "TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> .env.test
+        echo "REDIS_URL=redis://localhost:6379/1" >> .env.test
+
+    - name: Run tests
+      run: pnpm run test:all
+      env:
+        NODE_ENV: test
+
+  # Deploy to Server
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to server
+      run: |
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          set -e
+          
+          # Navigate to application directory
+          cd ${{ secrets.SERVER_APP_DIR || '/opt/launchpadder' }}
+          
+          # Pull latest code
+          git fetch origin
+          git reset --hard origin/main
+          
+          # Make deployment script executable
+          chmod +x scripts/deploy-to-server.sh
+          
+          # Run deployment
+          APP_PORT=${{ secrets.APP_PORT || '3000' }} \
+          DOMAIN=${{ secrets.DOMAIN || 'localhost' }} \
+          SETUP_NGINX=${{ secrets.SETUP_NGINX || 'false' }} \
+          ./scripts/deploy-to-server.sh
+        EOF
+
+    - name: Health check
+      run: |
+        sleep 30
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          curl -f http://localhost:${{ secrets.APP_PORT || '3000' }}/api/health || exit 1
+        EOF
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Deployment successful!"
+        echo "🚀 Application is running on ${{ secrets.DOMAIN || 'localhost' }}"
+
+    - name: Notify deployment failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed!"
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ${{ secrets.SERVER_APP_DIR || '/opt/launchpadder' }}
+          pm2 logs launchpadder --lines 20
+        EOF
+
+  # Optional: Slack notification
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    
+    steps:
+    - name: Slack notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ needs.deploy.result }}
+        channel: '#deployments'
+        text: |
+          🚀 LaunchPadder Deployment
+          Status: ${{ needs.deploy.result }}
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          Domain: ${{ secrets.DOMAIN || 'localhost' }}
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      if: env.SLACK_WEBHOOK != ''

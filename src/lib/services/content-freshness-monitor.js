@@ -1,456 +1,472 @@
-/**
- * Content Freshness Monitor Service
- * Monitors and tracks the freshness of submitted content, schedules updates,
- * and manages content lifecycle based on configurable policies.
- */
+// src/lib/services/content-freshness-monitor.js
+// Core service for monitoring and managing content freshness
 
+/**
+ * ContentFreshnessMonitor - Manages content freshness tracking and monitoring
+ * 
+ * This service provides comprehensive functionality for:
+ * - Tracking content freshness status
+ * - Calculating staleness scores
+ * - Managing refresh queues
+ * - Recording version history
+ * - Scheduling refresh operations
+ */
 export class ContentFreshnessMonitor {
-  constructor(options = {}) {
-    this.supabase = options.supabase;
-    this.defaultPolicy = options.defaultPolicy || 'default';
-    this.batchSize = options.batchSize || 50;
-    this.maxConcurrency = options.maxConcurrency || 5;
-    
-    // Valid refresh types
-    this.validRefreshTypes = ['metadata', 'ai_regeneration', 'validation', 'full'];
-    
-    if (!this.supabase) {
+  /**
+   * Priority multipliers for staleness score calculation
+   */
+  static PRIORITY_MULTIPLIERS = {
+    low: 0.8,
+    normal: 1.0,
+    high: 1.2,
+    critical: 1.5,
+  };
+
+  /**
+   * Default configuration values
+   */
+  static DEFAULTS = {
+    STALENESS_THRESHOLD: 50,
+    QUEUE_LIMIT: 50,
+    VERSION_HISTORY_LIMIT: 10,
+    STALE_SUBMISSIONS_LIMIT: 100,
+  };
+
+  /**
+   * Initialize ContentFreshnessMonitor
+   * 
+   * @param {Object} supabase - Supabase client instance
+   * @param {Object} logger - Logger instance
+   */
+  constructor(supabase, logger) {
+    if (!supabase) {
       throw new Error('Supabase client is required');
     }
+    if (!logger) {
+      throw new Error('Logger is required');
+    }
+
+    this.supabase = supabase;
+    this.logger = logger;
   }
 
   /**
-   * Check freshness for a single submission
+   * Check freshness status for a specific submission
+   * 
    * @param {string} submissionId - The submission ID to check
-   * @returns {Promise<Object>} Freshness check result
+   * @returns {Promise<Object|null>} Freshness data or null if not found
+   * @throws {Error} If database query fails
    */
-  async checkSubmissionFreshness(submissionId) {
+  async checkFreshness(submissionId) {
+    this.logger.debug('Checking freshness for submission', { submissionId });
+
     try {
-      // Get submission data
-      const { data: submission, error: submissionError } = await this.supabase
-        .from('submissions')
-        .select(`
-          id, url, last_metadata_check, last_metadata_update, 
-          url_status_code, content_freshness_score, is_stale
-        `)
-        .eq('id', submissionId)
+      const { data, error } = await this.supabase
+        .from('content_freshness')
+        .select('*')
+        .eq('submission_id', submissionId)
         .single();
 
-      if (submissionError) {
-        if (submissionError.code === 'PGRST116') {
-          throw new Error('Submission not found');
-        }
-        throw new Error(`Failed to check submission freshness: ${submissionError.message}`);
+      if (error) {
+        throw new Error(error.message);
       }
 
-      // Get freshness policy
-      const policy = await this.getFreshnessPolicy();
-      
-      // Calculate new freshness score
-      const previousScore = submission.content_freshness_score || 0;
-      const newScore = this.calculateFreshnessScore(submission, policy);
-      const needsUpdate = this.shouldScheduleUpdate(submission, policy, newScore);
-
-      // Update the submission with new score
-      const { error: updateError } = await this.supabase
-        .from('submissions')
-        .update({
-          content_freshness_score: newScore,
-          is_stale: newScore < 50,
-          last_metadata_check: new Date().toISOString()
-        })
-        .eq('id', submissionId);
-
-      if (updateError) {
-        console.warn(`Failed to update freshness score for ${submissionId}:`, updateError.message);
-      }
-
-      return {
-        submissionId,
-        url: submission.url,
-        previousScore,
-        newScore,
-        needsUpdate,
-        isStale: newScore < 50,
-        checkedAt: new Date().toISOString()
-      };
+      return data || null;
     } catch (error) {
-      throw new Error(`Failed to check submission freshness: ${error.message}`);
+      throw new Error(`Failed to check freshness: ${error.message}`);
     }
   }
 
   /**
-   * Calculate freshness score for a submission
-   * @param {Object} submission - Submission data
-   * @param {Object} policy - Freshness policy
-   * @returns {number} Freshness score (0-100)
+   * Calculate staleness score based on time elapsed and priority
+   * 
+   * @param {Date} lastChecked - When content was last checked
+   * @param {number} thresholdHours - Freshness threshold in hours
+   * @param {string} priority - Priority level (low, normal, high, critical)
+   * @returns {number} Staleness score (0-100)
    */
-  calculateFreshnessScore(submission, policy) {
+  calculateStalenessScore(lastChecked, thresholdHours, priority = 'normal') {
     const now = new Date();
-    const maxAgeMs = policy.max_age_hours * 60 * 60 * 1000;
-    const staleThresholdMs = policy.stale_threshold_hours * 60 * 60 * 1000;
+    const hoursElapsed = (now.getTime() - new Date(lastChecked).getTime()) / (1000 * 60 * 60);
     
-    let score = 100;
-
-    // Check time since last metadata check
-    if (submission.last_metadata_check) {
-      const lastCheck = new Date(submission.last_metadata_check);
-      const timeSinceCheck = now - lastCheck;
-      
-      if (timeSinceCheck > maxAgeMs) {
-        const excessHours = (timeSinceCheck - maxAgeMs) / (60 * 60 * 1000);
-        score -= Math.min(50, Math.floor(excessHours / 24) * 5);
-      }
-    } else {
-      // Never checked - significant penalty
-      score -= 40;
+    // Handle edge case of zero threshold
+    if (thresholdHours === 0) {
+      return 100.0;
     }
 
-    // Check time since last metadata update
-    if (submission.last_metadata_update) {
-      const lastUpdate = new Date(submission.last_metadata_update);
-      const timeSinceUpdate = now - lastUpdate;
-      
-      if (timeSinceUpdate > maxAgeMs * 2) {
-        const excessHours = (timeSinceUpdate - maxAgeMs * 2) / (60 * 60 * 1000);
-        score -= Math.min(30, Math.floor(excessHours / 24) * 3);
-      }
-    } else {
-      // Never updated - moderate penalty
-      score -= 25;
-    }
-
-    // Check URL status
-    if (submission.url_status_code) {
-      if (submission.url_status_code >= 400) {
-        score -= 40; // Significant penalty for failed URLs
-      } else if (submission.url_status_code >= 300) {
-        score -= 10; // Minor penalty for redirects
-      }
-    }
-
-    // Ensure score is within bounds
-    return Math.max(0, Math.min(100, Math.floor(score)));
+    // Calculate base score as percentage of threshold
+    const baseScore = Math.min(100.0, (hoursElapsed / thresholdHours) * 100.0);
+    
+    // Apply priority multiplier
+    const multiplier = ContentFreshnessMonitor.PRIORITY_MULTIPLIERS[priority] || 1.0;
+    const finalScore = Math.min(100.0, baseScore * multiplier);
+    
+    return Math.round(finalScore * 100) / 100; // Round to 2 decimal places
   }
 
   /**
-   * Determine if a submission should be scheduled for update
-   * @param {Object} submission - Submission data
-   * @param {Object} policy - Freshness policy
-   * @param {number} freshnessScore - Current freshness score
-   * @returns {boolean} Whether to schedule update
+   * Update freshness status for a submission
+   * 
+   * @param {string} submissionId - The submission ID to update
+   * @param {Object} updateData - Data to update
+   * @returns {Promise<boolean>} Success status
+   * @throws {Error} If update fails
    */
-  shouldScheduleUpdate(submission, policy, freshnessScore) {
-    // Always update if score is very low
-    if (freshnessScore < 30) {
-      return true;
-    }
-
-    // Check if enough time has passed since last check
-    if (submission.last_metadata_check) {
-      const lastCheck = new Date(submission.last_metadata_check);
-      const hoursSinceCheck = (new Date() - lastCheck) / (60 * 60 * 1000);
-      
-      if (hoursSinceCheck >= policy.check_frequency_hours) {
-        return true;
-      }
-    } else {
-      // Never checked
-      return true;
-    }
-
-    // Check if URL status indicates problems
-    if (submission.url_status_code && submission.url_status_code >= 400) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Get submissions that need freshness checks
-   * @param {number} limit - Maximum number of submissions to return
-   * @returns {Promise<Array>} Array of stale submissions
-   */
-  async getStaleSubmissions(limit = this.batchSize) {
+  async updateFreshnessStatus(submissionId, updateData) {
     try {
-      const { data: submissions, error } = await this.supabase
-        .from('submissions')
-        .select(`
-          id, url, last_metadata_check, last_metadata_update,
-          content_freshness_score, url_status_code, is_stale
-        `)
-        .lt('content_freshness_score', 70)
-        .is('archived_at', null)
-        .order('content_freshness_score', { ascending: true })
+      const { data, error } = await this.supabase
+        .from('content_freshness')
+        .update(updateData)
+        .eq('submission_id', submissionId);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      this.logger.info('Updated freshness status', {
+        submissionId,
+        status: updateData.status,
+      });
+
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to update freshness status: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get submissions that are considered stale
+   * 
+   * @param {number} threshold - Staleness score threshold (default: 50)
+   * @param {number} limit - Maximum number of results (default: 100)
+   * @returns {Promise<Array>} Array of stale submissions
+   * @throws {Error} If query fails
+   */
+  async getStaleSubmissions(
+    threshold = ContentFreshnessMonitor.DEFAULTS.STALENESS_THRESHOLD,
+    limit = ContentFreshnessMonitor.DEFAULTS.STALE_SUBMISSIONS_LIMIT
+  ) {
+    try {
+      const { data, error } = await this.supabase
+        .from('content_freshness')
+        .select('*')
+        .gte('staleness_score', threshold)
+        .order('staleness_score', { ascending: false })
         .limit(limit);
 
       if (error) {
-        throw new Error(`Failed to get stale submissions: ${error.message}`);
+        throw new Error(error.message);
       }
 
-      return submissions || [];
+      return data || [];
     } catch (error) {
       throw new Error(`Failed to get stale submissions: ${error.message}`);
     }
   }
 
   /**
-   * Schedule a refresh job for a submission
-   * @param {string} submissionId - Submission ID
-   * @param {string} refreshType - Type of refresh ('metadata', 'ai_regeneration', 'validation', 'full')
-   * @param {number} priority - Priority (1-10, lower is higher priority)
-   * @param {Object} metadata - Additional metadata for the job
-   * @returns {Promise<Object>} Scheduled job details
+   * Schedule a refresh operation for a submission
+   * 
+   * @param {string} submissionId - The submission ID to refresh
+   * @param {string} freshnessId - The freshness record ID
+   * @param {string} priority - Priority level (default: 'normal')
+   * @returns {Promise<boolean>} Success status
+   * @throws {Error} If scheduling fails
    */
-  async scheduleRefresh(submissionId, refreshType = 'metadata', priority = 5, metadata = {}) {
-    if (!this.validRefreshTypes.includes(refreshType)) {
-      throw new Error(`Invalid refresh type: ${refreshType}. Valid types: ${this.validRefreshTypes.join(', ')}`);
-    }
-
+  async scheduleRefresh(submissionId, freshnessId, priority = 'normal') {
     try {
-      const jobData = {
+      const scheduleData = {
         submission_id: submissionId,
-        refresh_type: refreshType,
+        freshness_id: freshnessId,
         priority,
         scheduled_at: new Date().toISOString(),
-        status: 'pending',
-        metadata
       };
 
-      const { error } = await this.supabase
-        .from('content_refresh_queue')
-        .insert(jobData);
+      const { data, error } = await this.supabase
+        .from('refresh_queue')
+        .insert(scheduleData);
 
       if (error) {
-        throw new Error(`Failed to schedule refresh: ${error.message}`);
+        throw new Error(error.message);
       }
 
-      return {
+      this.logger.info('Scheduled refresh', {
         submissionId,
-        refreshType,
         priority,
-        scheduledAt: jobData.scheduled_at,
-        metadata
-      };
+      });
+
+      return true;
     } catch (error) {
       throw new Error(`Failed to schedule refresh: ${error.message}`);
     }
   }
 
   /**
-   * Run freshness check for multiple submissions
-   * @param {number} batchSize - Number of submissions to process
-   * @returns {Promise<Object>} Processing results
+   * Get pending items from the refresh queue
+   * 
+   * @param {number} limit - Maximum number of items to retrieve (default: 50)
+   * @returns {Promise<Array>} Array of queue items
+   * @throws {Error} If query fails
    */
-  async runFreshnessCheck(batchSize = this.batchSize) {
-    const results = {
-      checked: 0,
-      scheduled: 0,
-      errors: 0,
-      startTime: new Date().toISOString()
-    };
-
+  async getRefreshQueue(limit = ContentFreshnessMonitor.DEFAULTS.QUEUE_LIMIT) {
     try {
-      // Get stale submissions
-      const submissions = await this.getStaleSubmissions(batchSize);
-      
-      if (submissions.length === 0) {
-        results.endTime = new Date().toISOString();
-        return results;
-      }
-
-      // Process submissions in batches to control concurrency
-      const batches = this.chunkArray(submissions, this.maxConcurrency);
-      
-      for (const batch of batches) {
-        const promises = batch.map(async (submission) => {
-          try {
-            const checkResult = await this.checkSubmissionFreshness(submission.id);
-            results.checked++;
-
-            if (checkResult.needsUpdate) {
-              await this.scheduleRefresh(
-                submission.id,
-                'metadata',
-                this.calculatePriority(checkResult.newScore)
-              );
-              results.scheduled++;
-            }
-          } catch (error) {
-            console.error(`Error checking submission ${submission.id}:`, error.message);
-            results.errors++;
-          }
-        });
-
-        await Promise.all(promises);
-      }
-
-      results.endTime = new Date().toISOString();
-      return results;
-    } catch (error) {
-      results.error = error.message;
-      results.endTime = new Date().toISOString();
-      throw error;
-    }
-  }
-
-  /**
-   * Calculate priority based on freshness score
-   * @param {number} score - Freshness score
-   * @returns {number} Priority (1-10)
-   */
-  calculatePriority(score) {
-    if (score < 20) return 1; // Highest priority
-    if (score < 40) return 3;
-    if (score < 60) return 5;
-    if (score < 80) return 7;
-    return 9; // Lowest priority
-  }
-
-  /**
-   * Get freshness policy by name
-   * @param {string} policyName - Policy name (defaults to instance default)
-   * @returns {Promise<Object>} Freshness policy
-   */
-  async getFreshnessPolicy(policyName = this.defaultPolicy) {
-    try {
-      const { data: policy, error } = await this.supabase
-        .from('content_freshness_policies')
+      const { data, error } = await this.supabase
+        .from('refresh_queue')
         .select('*')
-        .eq('name', policyName)
-        .single();
+        .eq('status', 'pending')
+        .order('scheduled_at', { ascending: true })
+        .limit(limit);
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          throw new Error(`Freshness policy not found: ${policyName}`);
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    } catch (error) {
+      throw new Error(`Failed to get refresh queue: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update the status of a refresh queue item
+   * 
+   * @param {string} queueId - The queue item ID
+   * @param {string} status - New status
+   * @param {string} workerId - Worker ID processing the item
+   * @param {string} errorMessage - Error message if failed
+   * @param {Object} errorDetails - Additional error details
+   * @returns {Promise<boolean>} Success status
+   * @throws {Error} If update fails
+   */
+  async updateRefreshQueueStatus(queueId, status, workerId, errorMessage = null, errorDetails = null) {
+    try {
+      const updateData = {
+        status,
+        worker_id: workerId,
+      };
+
+      // Add timestamps based on status
+      if (status === 'processing') {
+        updateData.started_at = new Date().toISOString();
+      } else if (status === 'completed' || status === 'failed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      // Add error information if provided
+      if (errorMessage) {
+        updateData.error_message = errorMessage;
+      }
+      if (errorDetails) {
+        updateData.error_details = errorDetails;
+      }
+
+      const { data, error } = await this.supabase
+        .from('refresh_queue')
+        .update(updateData)
+        .eq('id', queueId);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to update refresh queue status: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create a version snapshot for content changes
+   * 
+   * @param {Object} versionData - Version data to store
+   * @returns {Promise<boolean>} Success status
+   * @throws {Error} If creation fails
+   */
+  async createVersionSnapshot(versionData) {
+    try {
+      const { data, error } = await this.supabase
+        .from('content_versions')
+        .insert(versionData);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      this.logger.info('Created version snapshot', {
+        submissionId: versionData.submission_id,
+        version: versionData.version_number,
+        changeScore: versionData.change_score,
+      });
+
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to create version snapshot: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get version history for a submission
+   * 
+   * @param {string} submissionId - The submission ID
+   * @param {number} limit - Maximum number of versions to retrieve (default: 10)
+   * @returns {Promise<Array>} Array of version records
+   * @throws {Error} If query fails
+   */
+  async getVersionHistory(submissionId, limit = ContentFreshnessMonitor.DEFAULTS.VERSION_HISTORY_LIMIT) {
+    try {
+      const { data, error } = await this.supabase
+        .from('content_versions')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .order('version_number', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    } catch (error) {
+      throw new Error(`Failed to get version history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Record refresh operation history
+   * 
+   * @param {Object} historyData - History data to record
+   * @returns {Promise<boolean>} Success status
+   * @throws {Error} If recording fails
+   */
+  async recordRefreshHistory(historyData) {
+    try {
+      const { data, error } = await this.supabase
+        .from('refresh_history')
+        .insert(historyData);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      this.logger.debug('Recorded refresh history', {
+        submissionId: historyData.submission_id,
+        success: historyData.success,
+        duration: historyData.processing_duration_ms,
+      });
+
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to record refresh history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get refresh statistics for analytics
+   * 
+   * @param {Date} startDate - Start date for statistics
+   * @param {Date} endDate - End date for statistics
+   * @returns {Promise<Object>} Statistics object
+   * @throws {Error} If query fails
+   */
+  async getRefreshStatistics(startDate, endDate) {
+    try {
+      const { data, error } = await this.supabase
+        .from('refresh_history')
+        .select('success, processing_duration_ms, changes_found')
+        .gte('started_at', startDate.toISOString())
+        .lte('started_at', endDate.toISOString());
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const stats = {
+        total_refreshes: data.length,
+        successful_refreshes: data.filter(r => r.success).length,
+        failed_refreshes: data.filter(r => !r.success).length,
+        changes_detected: data.filter(r => r.changes_found).length,
+        avg_duration_ms: data.length > 0 
+          ? data.reduce((sum, r) => sum + (r.processing_duration_ms || 0), 0) / data.length
+          : 0,
+      };
+
+      return stats;
+    } catch (error) {
+      throw new Error(`Failed to get refresh statistics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update staleness scores for all tracked content
+   * 
+   * @returns {Promise<number>} Number of records updated
+   * @throws {Error} If update fails
+   */
+  async updateAllStalenessScores() {
+    try {
+      const { data, error } = await this.supabase
+        .rpc('update_staleness_scores');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      this.logger.info('Updated staleness scores', { updatedCount: data });
+      return data || 0;
+    } catch (error) {
+      throw new Error(`Failed to update staleness scores: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get freshness overview statistics
+   * 
+   * @returns {Promise<Object>} Overview statistics
+   * @throws {Error} If query fails
+   */
+  async getFreshnessOverview() {
+    try {
+      const { data, error } = await this.supabase
+        .from('content_freshness')
+        .select('status, staleness_score, priority');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const overview = {
+        total_tracked: data.length,
+        by_status: {},
+        by_priority: {},
+        avg_staleness_score: 0,
+        stale_count: 0,
+      };
+
+      // Calculate statistics
+      let totalScore = 0;
+      data.forEach(item => {
+        // Count by status
+        overview.by_status[item.status] = (overview.by_status[item.status] || 0) + 1;
+        
+        // Count by priority
+        overview.by_priority[item.priority] = (overview.by_priority[item.priority] || 0) + 1;
+        
+        // Sum staleness scores
+        totalScore += item.staleness_score || 0;
+        
+        // Count stale items (score >= 50)
+        if (item.staleness_score >= 50) {
+          overview.stale_count++;
         }
-        throw new Error(`Failed to get freshness policy: ${error.message}`);
-      }
+      });
 
-      return policy;
-    } catch (error) {
-      throw new Error(`Failed to get freshness policy: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update daily freshness metrics
-   * @param {Date} date - Date to generate metrics for (defaults to today)
-   * @returns {Promise<Object>} Update result
-   */
-  async updateFreshnessMetrics(date = new Date()) {
-    try {
-      const targetDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-      const { error } = await this.supabase
-        .rpc('generate_daily_freshness_metrics', { target_date: targetDate });
-
-      if (error) {
-        throw new Error(`Failed to update freshness metrics: ${error.message}`);
-      }
-
-      return {
-        date: targetDate,
-        success: true,
-        updatedAt: new Date().toISOString()
-      };
-    } catch (error) {
-      throw new Error(`Failed to update freshness metrics: ${error.message}`);
-    }
-  }
-
-  /**
-   * Archive stale submissions based on threshold
-   * @param {number} staleThresholdHours - Hours after which to archive
-   * @returns {Promise<Object>} Archive result
-   */
-  async archiveStaleSubmissions(staleThresholdHours = 720) {
-    try {
-      const { data: archivedCount, error } = await this.supabase
-        .rpc('archive_stale_submissions', { stale_threshold_hours: staleThresholdHours });
-
-      if (error) {
-        throw new Error(`Failed to archive stale submissions: ${error.message}`);
-      }
-
-      return {
-        archivedCount: archivedCount || 0,
-        thresholdHours: staleThresholdHours,
-        archivedAt: new Date().toISOString()
-      };
-    } catch (error) {
-      throw new Error(`Failed to archive stale submissions: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get freshness statistics
-   * @returns {Promise<Object>} Freshness statistics
-   */
-  async getFreshnessStatistics() {
-    try {
-      const { data: stats, error } = await this.supabase
-        .from('submissions')
-        .select('content_freshness_score, is_stale, archived_at')
-        .is('archived_at', null);
-
-      if (error) {
-        throw new Error(`Failed to get freshness statistics: ${error.message}`);
-      }
-
-      const total = stats.length;
-      const fresh = stats.filter(s => s.content_freshness_score >= 70).length;
-      const stale = stats.filter(s => s.is_stale).length;
-      const avgScore = total > 0 
-        ? stats.reduce((sum, s) => sum + (s.content_freshness_score || 0), 0) / total 
+      overview.avg_staleness_score = data.length > 0 
+        ? Math.round((totalScore / data.length) * 100) / 100
         : 0;
 
-      return {
-        total,
-        fresh,
-        stale,
-        averageScore: Math.round(avgScore * 100) / 100,
-        freshPercentage: total > 0 ? Math.round((fresh / total) * 100) : 0,
-        stalePercentage: total > 0 ? Math.round((stale / total) * 100) : 0
-      };
+      return overview;
     } catch (error) {
-      throw new Error(`Failed to get freshness statistics: ${error.message}`);
+      throw new Error(`Failed to get freshness overview: ${error.message}`);
     }
   }
-
-  /**
-   * Utility function to chunk array into smaller arrays
-   * @param {Array} array - Array to chunk
-   * @param {number} size - Chunk size
-   * @returns {Array} Array of chunks
-   */
-  chunkArray(array, size) {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
-  }
-
-  /**
-   * Cleanup method
-   */
-  async cleanup() {
-    // No cleanup needed for this service
-  }
 }
-
-/**
- * Factory function to create ContentFreshnessMonitor instance
- * @param {Object} options - Configuration options
- * @returns {ContentFreshnessMonitor} Monitor instance
- */
-export function createContentFreshnessMonitor(options = {}) {
-  return new ContentFreshnessMonitor(options);
-}
-
-// Export default instance (only if supabase is available)
-export const contentFreshnessMonitor = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
-  ? null // Will be initialized by the application with proper supabase client
-  : null;
