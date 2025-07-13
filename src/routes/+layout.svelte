@@ -1,16 +1,35 @@
 <script>
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { supabase } from '$lib/config/supabase.js';
   import { goto } from '$app/navigation';
   import MobileNav from '$lib/components/MobileNav.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
   import { themeStore } from '$lib/stores/theme.js';
+  import { initI18n, setLocale, getTextDirection } from '$lib/i18n/index.js';
+  import { locale, _ } from 'svelte-i18n';
   import '$lib/styles/themes.css';
+  
+  export let data;
   
   let user = null;
   let loading = true;
   let mobileMenuOpen = false;
+
+  // Initialize i18n system
+  $: if (browser && data?.locale) {
+    initI18n(data.locale);
+    setLocale(data.locale);
+  }
+
+  // Update document direction when locale changes
+  $: if (browser && $locale) {
+    const direction = getTextDirection();
+    document.documentElement.dir = direction;
+    document.documentElement.lang = $locale;
+  }
 
   onMount(async () => {
     // Initialize theme system
@@ -74,7 +93,7 @@
 
 <svelte:head>
   <title>
-    {$page.data.title ? `${$page.data.title} | ADLP` : 'API-Driven Launch Platform'}
+    {$page.data.title ? `${$page.data.title} | ${$_('brand.name')}` : $_('brand.fullName')}
   </title>
 </svelte:head>
 
@@ -83,31 +102,33 @@
     <nav class="nav">
       <div class="nav-brand">
         <a href="/" class="brand-link">
-          <h1>ADLP</h1>
-          <span class="brand-subtitle">Launch Platform</span>
+          <h1>{$_('brand.name')}</h1>
+          <span class="brand-subtitle">{$_('brand.subtitle')}</span>
         </a>
       </div>
       
       <!-- Desktop Navigation -->
       <div class="nav-links desktop-nav">
-        <a href="/" class:active={$page.url.pathname === '/'}>Home</a>
-        <a href="/launches" class:active={$page.url.pathname === '/launches'}>Launches</a>
-        <a href="/submit" class:active={$page.url.pathname === '/submit'}>Submit</a>
+        <a href="/" class:active={$page.url.pathname === '/'}>{$_('navigation.home')}</a>
+        <a href="/launches" class:active={$page.url.pathname === '/launches'}>{$_('navigation.launches')}</a>
+        <a href="/submit" class:active={$page.url.pathname === '/submit'}>{$_('navigation.submit')}</a>
         
         {#if loading}
           <div class="loading-spinner"></div>
         {:else if user}
-          <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>Dashboard</a>
+          <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>{$_('navigation.dashboard')}</a>
+          <LanguageSwitcher variant="dropdown" size="medium" showFlags={true} showLabels={false} />
           <ThemeToggle variant="icon" size="medium" showLabel={false} />
-          <button on:click={handleSignOut} class="btn btn-outline">Sign Out</button>
+          <button on:click={handleSignOut} class="btn btn-outline">{$_('navigation.signOut')}</button>
         {:else}
+          <LanguageSwitcher variant="dropdown" size="medium" showFlags={true} showLabels={false} />
           <ThemeToggle variant="icon" size="medium" showLabel={false} />
-          <a href="/auth/login" class="btn btn-primary">Sign In</a>
+          <a href="/auth/login" class="btn btn-primary">{$_('navigation.signIn')}</a>
         {/if}
       </div>
 
       <!-- Mobile Hamburger Menu -->
-      <button class="mobile-menu-btn" on:click={toggleMobileMenu} aria-label="Toggle menu">
+      <button class="mobile-menu-btn" on:click={toggleMobileMenu} aria-label={$_('navigation.toggleMenu')}>
         <div class="hamburger" class:open={mobileMenuOpen}>
           <span></span>
           <span></span>
@@ -133,40 +154,40 @@
   <footer class="footer">
     <div class="footer-content">
       <div class="footer-section">
-        <h3>ADLP</h3>
-        <p>An open-source, federated platform for launching digital products.</p>
+        <h3>{$_('brand.name')}</h3>
+        <p>{$_('footer.description')}</p>
       </div>
       
       <div class="footer-section">
-        <h4>Platform</h4>
+        <h4>{$_('footer.platform.title')}</h4>
         <ul>
-          <li><a href="/launches">Browse Launches</a></li>
-          <li><a href="/submit">Submit Product</a></li>
-          <li><a href="/api/docs">API Documentation</a></li>
+          <li><a href="/launches">{$_('footer.platform.browseLaunches')}</a></li>
+          <li><a href="/submit">{$_('footer.platform.submitProduct')}</a></li>
+          <li><a href="/api/docs">{$_('footer.platform.apiDocs')}</a></li>
         </ul>
       </div>
       
       <div class="footer-section">
-        <h4>Federation</h4>
+        <h4>{$_('footer.federation.title')}</h4>
         <ul>
-          <li><a href="/federation">Join Network</a></li>
-          <li><a href="/federation/instances">Instances</a></li>
-          <li><a href="/federation/docs">Federation Docs</a></li>
+          <li><a href="/federation">{$_('footer.federation.joinNetwork')}</a></li>
+          <li><a href="/federation/instances">{$_('footer.federation.instances')}</a></li>
+          <li><a href="/federation/docs">{$_('footer.federation.docs')}</a></li>
         </ul>
       </div>
       
       <div class="footer-section">
-        <h4>Community</h4>
+        <h4>{$_('footer.community.title')}</h4>
         <ul>
-          <li><a href="https://github.com/your-org/adlp" target="_blank">GitHub</a></li>
-          <li><a href="/docs">Documentation</a></li>
-          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/your-org/adlp" target="_blank">{$_('footer.community.github')}</a></li>
+          <li><a href="/docs">{$_('footer.community.documentation')}</a></li>
+          <li><a href="/support">{$_('footer.community.support')}</a></li>
         </ul>
       </div>
     </div>
     
     <div class="footer-bottom">
-      <p>&copy; 2024 ADLP. Open source under MIT License.</p>
+      <p>{$_('footer.copyright')}</p>
     </div>
   </footer>
 </div>

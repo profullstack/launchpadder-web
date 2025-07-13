@@ -1,7 +1,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { page } from '$app/stores';
+  import { _ } from 'svelte-i18n';
   import ThemeToggle from './ThemeToggle.svelte';
+  import LanguageSwitcher from './LanguageSwitcher.svelte';
   
   export let isOpen = false;
   export let user = null;
@@ -32,10 +34,10 @@
 <nav class="mobile-nav" class:open={isOpen}>
   <div class="mobile-nav-header">
     <div class="mobile-brand">
-      <h2>ADLP</h2>
-      <span>Launch Platform</span>
+      <h2>{$_('brand.name')}</h2>
+      <span>{$_('brand.subtitle')}</span>
     </div>
-    <button class="close-btn" on:click={closeMenu} aria-label="Close menu">
+    <button class="close-btn" on:click={closeMenu} aria-label={$_('navigation.closeMenu')}>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -50,7 +52,7 @@
           <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9,22 9,12 15,12 15,22"></polyline>
         </svg>
-        Home
+        {$_('navigation.home')}
       </a>
       
       <a href="/launches" class:active={$page.url.pathname === '/launches'} on:click={handleLinkClick}>
@@ -58,7 +60,7 @@
           <circle cx="12" cy="12" r="10"></circle>
           <polygon points="10,8 16,12 10,16 10,8"></polygon>
         </svg>
-        Launches
+        {$_('navigation.launches')}
       </a>
       
       <a href="/submit" class:active={$page.url.pathname === '/submit'} on:click={handleLinkClick}>
@@ -66,13 +68,13 @@
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-        Submit
+        {$_('navigation.submit')}
       </a>
       
       {#if loading}
         <div class="mobile-loading">
           <div class="loading-spinner"></div>
-          <span>Loading...</span>
+          <span>{$_('common.loading')}</span>
         </div>
       {:else if user}
         <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'} on:click={handleLinkClick}>
@@ -81,7 +83,7 @@
             <line x1="9" y1="9" x2="15" y2="9"></line>
             <line x1="9" y1="15" x2="15" y2="15"></line>
           </svg>
-          Dashboard
+          {$_('navigation.dashboard')}
         </a>
         
         <a href="/moderation" class:active={$page.url.pathname === '/moderation'} on:click={handleLinkClick}>
@@ -92,14 +94,19 @@
             <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"></path>
             <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"></path>
           </svg>
-          Moderation
+          {$_('navigation.moderation')}
         </a>
       {/if}
     </div>
     
     <div class="mobile-nav-settings">
       <div class="settings-section">
-        <h4>Theme</h4>
+        <h4>{$_('language.title')}</h4>
+        <LanguageSwitcher variant="select" size="medium" showFlags={true} showLabels={true} />
+      </div>
+      
+      <div class="settings-section">
+        <h4>{$_('theme.title')}</h4>
         <ThemeToggle variant="dropdown" size="medium" showLabel={true} />
       </div>
     </div>
@@ -113,7 +120,7 @@
             </div>
             <div class="user-details">
               <span class="user-email">{user.email}</span>
-              <span class="user-role">Member</span>
+              <span class="user-role">{$_('common.active')}</span>
             </div>
           </div>
           
@@ -123,7 +130,7 @@
               <polyline points="16,17 21,12 16,7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            Sign Out
+            {$_('navigation.signOut')}
           </button>
         {:else}
           <a href="/auth/login" class="mobile-btn mobile-btn-primary" on:click={handleLinkClick}>
@@ -132,7 +139,7 @@
               <polyline points="10,17 15,12 10,7"></polyline>
               <line x1="15" y1="12" x2="3" y2="12"></line>
             </svg>
-            Sign In
+            {$_('navigation.signIn')}
           </a>
           
           <a href="/auth/signup" class="mobile-btn mobile-btn-outline" on:click={handleLinkClick}>
@@ -142,7 +149,7 @@
               <line x1="20" y1="8" x2="20" y2="14"></line>
               <line x1="23" y1="11" x2="17" y2="11"></line>
             </svg>
-            Sign Up
+            {$_('navigation.signUp')}
           </a>
         {/if}
       {/if}

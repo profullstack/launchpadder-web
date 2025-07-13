@@ -1,0 +1,1395 @@
+openapi: 3.0.3
+info:
+  title: LaunchPadder Federation API
+  description: |
+    Comprehensive API for LaunchPadder's federated launch platform.
+    
+    This API enables external platforms to:
+    - Discover available launches and categories
+    - Submit launches to our platform
+    - Retrieve launch status and analytics
+    - Manage federation partnerships
+    - Access real-time updates via webhooks
+    
+    ## Authentication
+    
+    The API uses JWT tokens for authentication. Federation partners receive API keys
+    that can be exchanged for JWT tokens via the `/api/v1/auth/token` endpoint.
+    
+    ## Rate Limiting
+    
+    API calls are rate limited based on your partnership tier:
+    - Basic: 100 requests/hour
+    - Premium: 1000 requests/hour
+    - Enterprise: 10000 requests/hour
+    
+    ## Webhooks
+    
+    Real-time updates are delivered via webhooks to registered endpoints.
+    Webhook events include submission status changes, moderation updates,
+    and analytics data.
+    
+  version: 1.0.0
+  contact:
+    name: LaunchPadder API Support
+    email: api-support@launchpadder.com
+    url: https://launchpadder.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://launchpadder.com/terms
+
+servers:
+  - url: https://api.launchpadder.com/v1
+    description: Production server
+  - url: https://staging-api.launchpadder.com/v1
+    description: Staging server
+  - url: http://localhost:5173/api/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Exchange API key for JWT token
+      description: Exchange your federation API key for a JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_key
+              properties:
+                api_key:
+                  type: string
+                  description: Your federation API key
+                  example: "fed_key_abc123xyz789"
+      responses:
+        '200':
+          description: JWT token generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: JWT token for API authentication
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  expires_in:
+                    type: integer
+                    description: Token expiration time in seconds
+                    example: 3600
+                  partner_info:
+                    $ref: '#/components/schemas/FederationPartner'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  # Federation Discovery Endpoints
+  /federation/info:
+    get:
+      tags:
+        - Federation Discovery
+      summary: Get federation instance information
+      description: Returns detailed information about this federation instance
+      security: []
+      responses:
+        '200':
+          description: Federation instance information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationInfo'
+
+  /federation/directories:
+    get:
+      tags:
+        - Federation Discovery
+      summary: List available directories
+      description: Get list of available directories for submissions
+      security: []
+      parameters:
+        - name: category
+          in: query
+          description: Filter by category
+          schema:
+            type: string
+            enum: [products, startups, tools, ai, design]
+        - name: limit
+          in: query
+          description: Number of directories to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of directories to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of available directories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  directories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Directory'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  federation_info:
+                    $ref: '#/components/schemas/FederationInfo'
+
+  /federation/instances:
+    get:
+      tags:
+        - Federation Discovery
+      summary: List known federation instances
+      description: Get list of known federation instances in the network
+      responses:
+        '200':
+          description: List of federation instances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  instances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FederationInstance'
+                  total:
+                    type: integer
+                    example: 25
+
+  # Submission Endpoints
+  /submissions:
+    post:
+      tags:
+        - Submissions
+      summary: Create a new submission
+      description: Submit a new launch to the platform
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+      responses:
+        '201':
+          description: Submission created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  submission:
+                    $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    get:
+      tags:
+        - Submissions
+      summary: List submissions
+      description: Get list of submissions (filtered by user if authenticated)
+      parameters:
+        - name: status
+          in: query
+          description: Filter by submission status
+          schema:
+            type: string
+            enum: [pending, approved, rejected, processing]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  submissions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Submission'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /submissions/{id}:
+    get:
+      tags:
+        - Submissions
+      summary: Get submission details
+      description: Get detailed information about a specific submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Submission details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  submission:
+                    $ref: '#/components/schemas/Submission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Submissions
+      summary: Update submission
+      description: Update an existing submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionUpdate'
+      responses:
+        '200':
+          description: Submission updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  submission:
+                    $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Federation Submission Endpoints
+  /federation/submit:
+    post:
+      tags:
+        - Federation Submissions
+      summary: Submit to external federation instance
+      description: Submit a launch to an external federation instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederationSubmissionCreate'
+      responses:
+        '201':
+          description: Federation submission created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  federation_submission:
+                    $ref: '#/components/schemas/FederationSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /federation/submissions:
+    get:
+      tags:
+        - Federation Submissions
+      summary: List federation submissions
+      description: Get list of federation submissions
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of federation submissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  federation_submissions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FederationSubmission'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /federation/submissions/{id}/status:
+    get:
+      tags:
+        - Federation Submissions
+      summary: Get federation submission status
+      description: Get detailed status of a federation submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Federation submission status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  status:
+                    $ref: '#/components/schemas/FederationSubmissionStatus'
+
+  # Analytics Endpoints
+  /analytics/overview:
+    get:
+      tags:
+        - Analytics
+      summary: Get analytics overview
+      description: Get overview of submission and federation analytics
+      parameters:
+        - name: period
+          in: query
+          description: Time period for analytics
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+      responses:
+        '200':
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsOverview'
+
+  /analytics/federation:
+    get:
+      tags:
+        - Analytics
+      summary: Get federation analytics
+      description: Get detailed federation analytics and metrics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+      responses:
+        '200':
+          description: Federation analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationAnalytics'
+
+  # Partner Management Endpoints
+  /partners:
+    get:
+      tags:
+        - Partner Management
+      summary: List federation partners
+      description: Get list of federation partners (admin only)
+      responses:
+        '200':
+          description: List of federation partners
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  partners:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FederationPartner'
+
+    post:
+      tags:
+        - Partner Management
+      summary: Create federation partner
+      description: Create a new federation partner (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederationPartnerCreate'
+      responses:
+        '201':
+          description: Federation partner created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  partner:
+                    $ref: '#/components/schemas/FederationPartner'
+                  api_key:
+                    type: string
+                    description: Generated API key for the partner
+                    example: "fed_key_abc123xyz789"
+
+  /partners/{id}:
+    get:
+      tags:
+        - Partner Management
+      summary: Get partner details
+      description: Get detailed information about a federation partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Partner details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  partner:
+                    $ref: '#/components/schemas/FederationPartner'
+
+    put:
+      tags:
+        - Partner Management
+      summary: Update partner
+      description: Update federation partner information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederationPartnerUpdate'
+      responses:
+        '200':
+          description: Partner updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  partner:
+                    $ref: '#/components/schemas/FederationPartner'
+
+  # Webhook Endpoints
+  /webhooks:
+    get:
+      tags:
+        - Webhooks
+      summary: List webhooks
+      description: Get list of registered webhooks
+      responses:
+        '200':
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+
+    post:
+      tags:
+        - Webhooks
+      summary: Create webhook
+      description: Register a new webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookCreate'
+      responses:
+        '201':
+          description: Webhook created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+
+  /webhooks/{id}:
+    delete:
+      tags:
+        - Webhooks
+      summary: Delete webhook
+      description: Delete a registered webhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Webhook deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Webhook deleted successfully"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/token endpoint
+    
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Federation API key for partner authentication
+
+  schemas:
+    FederationInfo:
+      type: object
+      properties:
+        federation_enabled:
+          type: boolean
+          example: true
+        instance_name:
+          type: string
+          example: "LaunchPadder"
+        instance_description:
+          type: string
+          example: "API-driven launch platform for federated directory submissions"
+        version:
+          type: string
+          example: "1.0.0"
+        api_version:
+          type: string
+          example: "1.0"
+        supported_features:
+          type: array
+          items:
+            type: string
+          example: ["submissions", "directories", "metadata_extraction", "ai_enhancement"]
+        api_endpoints:
+          type: array
+          items:
+            type: string
+          example: ["/api/v1/federation/health", "/api/v1/federation/info"]
+        submission_formats:
+          type: array
+          items:
+            type: string
+          example: ["url", "metadata", "enhanced_metadata"]
+        payment_methods:
+          type: array
+          items:
+            type: string
+          example: ["stripe", "crypto"]
+        rate_limits:
+          type: object
+          properties:
+            submissions_per_hour:
+              type: integer
+              example: 100
+            api_calls_per_minute:
+              type: integer
+              example: 60
+        contact:
+          type: object
+          properties:
+            admin_email:
+              type: string
+              format: email
+              example: "admin@launchpadder.com"
+            support_url:
+              type: string
+              format: uri
+              example: "https://launchpadder.com/support"
+        federation:
+          type: object
+          properties:
+            accepts_submissions:
+              type: boolean
+              example: true
+            shares_directories:
+              type: boolean
+              example: true
+            requires_authentication:
+              type: boolean
+              example: false
+            supports_webhooks:
+              type: boolean
+              example: true
+        timestamp:
+          type: string
+          format: date-time
+
+    Directory:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "main"
+        name:
+          type: string
+          example: "Main Directory"
+        description:
+          type: string
+          example: "Primary product and service directory"
+        category:
+          type: string
+          enum: [products, startups, tools, ai, design]
+          example: "products"
+        submission_count:
+          type: integer
+          example: 1250
+        last_updated:
+          type: string
+          format: date-time
+        submission_fee:
+          type: object
+          properties:
+            usd:
+              type: number
+              format: float
+              example: 5.00
+            crypto_supported:
+              type: boolean
+              example: true
+        requirements:
+          type: object
+          properties:
+            url_required:
+              type: boolean
+              example: true
+            description_min_length:
+              type: integer
+              example: 50
+            moderation_required:
+              type: boolean
+              example: true
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["products", "services", "startups"]
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+          example: "active"
+
+    FederationInstance:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "ProductHunt Federation"
+        url:
+          type: string
+          format: uri
+          example: "https://api.producthunt.com"
+        status:
+          type: string
+          enum: [active, inactive, error]
+          example: "active"
+        last_seen:
+          type: string
+          format: date-time
+        capabilities:
+          type: array
+          items:
+            type: string
+          example: ["submissions", "webhooks"]
+        trust_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 10
+          example: 8.5
+
+    Submission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          example: "https://example.com"
+        title:
+          type: string
+          example: "Amazing Product"
+        description:
+          type: string
+          example: "This is an amazing product that solves real problems"
+        category:
+          type: string
+          example: "products"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["saas", "productivity"]
+        status:
+          type: string
+          enum: [pending, approved, rejected, processing]
+          example: "pending"
+        metadata:
+          type: object
+          description: Extracted metadata from the URL
+        ai_analysis:
+          type: object
+          description: AI-generated analysis and enhancements
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SubmissionCreate:
+      type: object
+      required:
+        - url
+        - title
+        - description
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "https://example.com"
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "Amazing Product"
+        description:
+          type: string
+          minLength: 10
+          maxLength: 500
+          example: "This is an amazing product that solves real problems"
+        category:
+          type: string
+          example: "products"
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+          example: ["saas", "productivity"]
+
+    SubmissionUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          minLength: 10
+          maxLength: 500
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    FederationSubmission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        submission_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        directories:
+          type: array
+          items:
+            type: object
+            properties:
+              instance_url:
+                type: string
+                format: uri
+              directory_id:
+                type: string
+              status:
+                type: string
+                enum: [pending, processing, completed, failed]
+        total_cost:
+          type: number
+          format: float
+        payment_method:
+          type: string
+          enum: [stripe, crypto]
+        payment_status:
+          type: string
+          enum: [pending, completed, failed]
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FederationSubmissionCreate:
+      type: object
+      required:
+        - submission_id
+        - directories
+      properties:
+        submission_id:
+          type: string
+          format: uuid
+        directories:
+          type: array
+          items:
+            type: object
+            required:
+              - instance_url
+              - directory_id
+            properties:
+              instance_url:
+                type: string
+                format: uri
+              directory_id:
+                type: string
+        payment_method:
+          type: string
+          enum: [stripe, crypto]
+          default: stripe
+
+    FederationSubmissionStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        progress:
+          type: object
+          properties:
+            total_directories:
+              type: integer
+            completed_directories:
+              type: integer
+            failed_directories:
+              type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              instance_url:
+                type: string
+                format: uri
+              directory_id:
+                type: string
+              status:
+                type: string
+                enum: [pending, processing, completed, failed]
+              submission_url:
+                type: string
+                format: uri
+              error_message:
+                type: string
+        last_updated:
+          type: string
+          format: date-time
+
+    FederationPartner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "ProductHunt"
+        organization:
+          type: string
+          example: "ProductHunt Inc."
+        contact_email:
+          type: string
+          format: email
+          example: "api@producthunt.com"
+        api_endpoint:
+          type: string
+          format: uri
+          example: "https://api.producthunt.com"
+        tier:
+          type: string
+          enum: [basic, premium, enterprise]
+          example: "premium"
+        rate_limit:
+          type: integer
+          example: 1000
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+        last_active:
+          type: string
+          format: date-time
+
+    FederationPartnerCreate:
+      type: object
+      required:
+        - name
+        - organization
+        - contact_email
+        - api_endpoint
+      properties:
+        name:
+          type: string
+          example: "ProductHunt"
+        organization:
+          type: string
+          example: "ProductHunt Inc."
+        contact_email:
+          type: string
+          format: email
+          example: "api@producthunt.com"
+        api_endpoint:
+          type: string
+          format: uri
+          example: "https://api.producthunt.com"
+        tier:
+          type: string
+          enum: [basic, premium, enterprise]
+          default: basic
+
+    FederationPartnerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        organization:
+          type: string
+        contact_email:
+          type: string
+          format: email
+        api_endpoint:
+          type: string
+          format: uri
+        tier:
+          type: string
+          enum: [basic, premium, enterprise]
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          example: "https://api.partner.com/webhooks/launchpadder"
+        events:
+          type: array
+          items:
+            type: string
+          example: ["submission.created", "submission.approved", "federation.completed"]
+        secret:
+          type: string
+          description: Secret for webhook signature verification
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+        last_triggered:
+          type: string
+          format: date-time
+
+    WebhookCreate:
+      type: object
+      required:
+        - url
+        - events
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "https://api.partner.com/webhooks/launchpadder"
+        events:
+          type: array
+          items:
+            type: string
+            enum: [
+              "submission.created",
+              "submission.approved",
+              "submission.rejected",
+              "federation.started",
+              "federation.completed",
+              "federation.failed"
+            ]
+          example: ["submission.created", "submission.approved"]
+
+    AnalyticsOverview:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        period:
+          type: string
+          example: "month"
+        submissions:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 1250
+            approved:
+              type: integer
+              example: 980
+            rejected:
+              type: integer
+              example: 120
+            pending:
+              type: integer
+              example: 150
+        federation:
+          type: object
+          properties:
+            total_submissions:
+              type: integer
+              example: 450
+            successful_submissions:
+              type: integer
+              example: 380
+            failed_submissions:
+              type: integer
+              example: 70
+        revenue:
+          type: object
+          properties:
+            total:
+              type: number
+              format: float
+              example: 6250.00
+            stripe:
+              type: number
+              format: float
+              example: 4500.00
+            crypto:
+              type: number
+              format: float
+              example: 1750.00
+
+    FederationAnalytics:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        period:
+          type: string
+          example: "month"
+        partner_activity:
+          type: array
+          items:
+            type: object
+            properties:
+              partner_id:
+                type: string
+                format: uuid
+              partner_name:
+                type: string
+                example: "ProductHunt"
+              api_calls:
+                type: integer
+                example: 2500
+              submissions:
+                type: integer
+                example: 150
+              success_rate:
+                type: number
+                format: float
+                example: 0.85
+        top_directories:
+          type: array
+          items:
+            type: object
+            properties:
+              directory_id:
+                type: string
+                example: "main"
+              directory_name:
+                type: string
+                example: "Main Directory"
+              submissions:
+                type: integer
+                example: 300
+        geographic_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            US: 450
+            EU: 320
+            ASIA: 180
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 1250
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+        has_more:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Invalid request parameters"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        details:
+          type: object
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Invalid request parameters"
+            code: "VALIDATION_ERROR"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Resource not found"
+            code: "NOT_FOUND"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Rate limit exceeded"
+            code: "RATE_LIMITED"
+            timestamp: "2024-01-15T10:30:00Z"
+      headers:
+        X-RateLimit-Limit:
+          description: The number of allowed requests in the current period
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: The number of remaining requests in the current period
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: The time at which the current rate limit window resets
+          schema:
+            type: integer
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+            timestamp: "2024-01-15T10:30:00Z"

@@ -1,0 +1,469 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "view": "Ver",
+    "download": "Descargar",
+    "upload": "Subir",
+    "copy": "Copiar",
+    "share": "Compartir",
+    "settings": "Configuración",
+    "help": "Ayuda",
+    "about": "Acerca de",
+    "contact": "Contacto",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "confirm": "Confirmar",
+    "warning": "Advertencia",
+    "info": "Información",
+    "required": "Requerido",
+    "optional": "Opcional",
+    "all": "Todos",
+    "none": "Ninguno",
+    "other": "Otro",
+    "unknown": "Desconocido",
+    "date": "Fecha",
+    "time": "Hora",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "username": "Nombre de usuario",
+    "description": "Descripción",
+    "title": "Título",
+    "url": "URL",
+    "image": "Imagen",
+    "file": "Archivo",
+    "size": "Tamaño",
+    "type": "Tipo",
+    "status": "Estado",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
+    "public": "Público",
+    "private": "Privado",
+    "draft": "Borrador",
+    "published": "Publicado",
+    "pending": "Pendiente",
+    "approved": "Aprobado",
+    "rejected": "Rechazado",
+    "new": "Nuevo",
+    "updated": "Actualizado",
+    "created": "Creado",
+    "modified": "Modificado",
+    "deleted": "Eliminado"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "launches": "Lanzamientos",
+    "submit": "Enviar",
+    "dashboard": "Panel",
+    "moderation": "Moderación",
+    "profile": "Perfil",
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "signOut": "Cerrar sesión",
+    "menu": "Menú",
+    "closeMenu": "Cerrar menú",
+    "toggleMenu": "Alternar menú"
+  },
+  "brand": {
+    "name": "ADLP",
+    "fullName": "Plataforma de Lanzamiento Dirigida por API",
+    "subtitle": "Plataforma de Lanzamiento",
+    "tagline": "Lanzamientos de Productos Federados",
+    "description": "Una plataforma federada de código abierto para lanzar productos digitales."
+  },
+  "home": {
+    "hero": {
+      "title": "Lanza tu Producto en la",
+      "titleHighlight": "Web Federada",
+      "description": "ADLP es una plataforma de código abierto, API-first para lanzar productos digitales. Únete a nuestra red descentralizada donde las instancias se comunican peer-to-peer, asegurando que tus lanzamientos lleguen a la audiencia más amplia sin control central.",
+      "submitProduct": "Envía tu Producto",
+      "browseLaunches": "Explorar Lanzamientos"
+    },
+    "features": {
+      "title": "¿Por qué elegir ADLP?",
+      "subtitle": "Construido para la web moderna con federación, IA y principios developer-first",
+      "federated": {
+        "title": "Red Federada",
+        "description": "Tus lanzamientos se distribuyen automáticamente a través de instancias conectadas, llegando a audiencias en todas partes sin guardianes centrales."
+      },
+      "ai": {
+        "title": "Contenido Potenciado por IA",
+        "description": "Nuestra IA reescribe las descripciones de tus productos para unicidad y optimización SEO, previniendo penalizaciones por contenido duplicado."
+      },
+      "api": {
+        "title": "Diseño API-First",
+        "description": "Todo es accesible a través de nuestra API REST. Construye integraciones, automatiza envíos y crea experiencias personalizadas."
+      },
+      "openSource": {
+        "title": "Código Abierto",
+        "description": "Completamente de código abierto bajo licencia MIT. Ejecuta tu propia instancia, contribuye características o haz fork para necesidades personalizadas."
+      },
+      "simple": {
+        "title": "Envío Simple",
+        "description": "Solo proporciona una URL. Automáticamente obtenemos metadatos, logos y generamos descripciones optimizadas para tu producto."
+      },
+      "privacy": {
+        "title": "Enfocado en Privacidad",
+        "description": "Sin seguimiento, sin anuncios, sin minería de datos. Tus envíos y datos de usuario permanecen privados y seguros."
+      }
+    },
+    "recentLaunches": {
+      "title": "Lanzamientos Recientes",
+      "subtitle": "Descubre los últimos productos lanzados en nuestra plataforma",
+      "loading": "Cargando lanzamientos recientes...",
+      "error": "No se pudieron cargar los lanzamientos recientes. Por favor, inténtalo de nuevo más tarde.",
+      "empty": {
+        "title": "Aún no hay lanzamientos",
+        "description": "¡Sé el primero en lanzar tu producto en ADLP!",
+        "action": "Enviar Primer Producto"
+      },
+      "visitProduct": "Visitar Producto →",
+      "viewAll": "Ver Todos los Lanzamientos"
+    },
+    "cta": {
+      "title": "¿Listo para Lanzar?",
+      "description": "Únete a miles de creadores lanzando sus productos en la web federada",
+      "action": "Envía tu Producto"
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Iniciar Sesión",
+      "subtitle": "Bienvenido de vuelta a ADLP",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "submit": "Iniciar Sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "noAccount": "¿No tienes una cuenta?",
+      "signUpLink": "Regístrate aquí",
+      "errors": {
+        "invalidCredentials": "Correo electrónico o contraseña inválidos",
+        "emailRequired": "El correo electrónico es requerido",
+        "passwordRequired": "La contraseña es requerida",
+        "invalidEmail": "Por favor ingresa una dirección de correo electrónico válida"
+      }
+    },
+    "signUp": {
+      "title": "Registrarse",
+      "subtitle": "Únete a la comunidad ADLP",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "submit": "Crear Cuenta",
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "signInLink": "Inicia sesión aquí",
+      "terms": "Al crear una cuenta, aceptas nuestros",
+      "termsLink": "Términos de Servicio",
+      "and": "y",
+      "privacyLink": "Política de Privacidad",
+      "errors": {
+        "emailRequired": "El correo electrónico es requerido",
+        "passwordRequired": "La contraseña es requerida",
+        "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+        "passwordMismatch": "Las contraseñas no coinciden",
+        "invalidEmail": "Por favor ingresa una dirección de correo electrónico válida",
+        "emailTaken": "Ya existe una cuenta con este correo electrónico"
+      }
+    },
+    "forgotPassword": {
+      "title": "Restablecer Contraseña",
+      "subtitle": "Ingresa tu correo electrónico para recibir instrucciones de restablecimiento",
+      "email": "Dirección de correo electrónico",
+      "submit": "Enviar Enlace de Restablecimiento",
+      "backToSignIn": "Volver a iniciar sesión",
+      "success": "Enlace de restablecimiento de contraseña enviado a tu correo electrónico",
+      "errors": {
+        "emailRequired": "El correo electrónico es requerido",
+        "invalidEmail": "Por favor ingresa una dirección de correo electrónico válida",
+        "userNotFound": "No se encontró ninguna cuenta con esta dirección de correo electrónico"
+      }
+    }
+  },
+  "submit": {
+    "title": "Envía tu Producto",
+    "subtitle": "Lanza tu producto en la web federada",
+    "form": {
+      "url": {
+        "label": "URL del Producto",
+        "placeholder": "https://tuproducto.com",
+        "help": "Ingresa la URL de tu producto. Automáticamente obtendremos metadatos y generaremos descripciones."
+      },
+      "category": {
+        "label": "Categoría",
+        "placeholder": "Selecciona una categoría",
+        "options": {
+          "web": "Aplicación Web",
+          "mobile": "Aplicación Móvil",
+          "desktop": "Aplicación de Escritorio",
+          "saas": "SaaS",
+          "tool": "Herramienta de Desarrollador",
+          "game": "Juego",
+          "extension": "Extensión de Navegador",
+          "api": "API/Servicio",
+          "other": "Otro"
+        }
+      },
+      "tags": {
+        "label": "Etiquetas",
+        "placeholder": "Agregar etiquetas (presiona Enter)",
+        "help": "Agrega etiquetas relevantes para ayudar a los usuarios a descubrir tu producto"
+      },
+      "pricing": {
+        "label": "Precios",
+        "options": {
+          "free": "Gratis",
+          "freemium": "Freemium",
+          "paid": "De pago",
+          "subscription": "Suscripción",
+          "oneTime": "Compra única"
+        }
+      },
+      "submit": "Enviar Producto",
+      "submitting": "Enviando...",
+      "preview": "Vista previa",
+      "errors": {
+        "urlRequired": "La URL del producto es requerida",
+        "invalidUrl": "Por favor ingresa una URL válida",
+        "categoryRequired": "Por favor selecciona una categoría",
+        "fetchFailed": "Error al obtener metadatos del producto. Por favor verifica la URL e inténtalo de nuevo."
+      }
+    },
+    "preview": {
+      "title": "Vista Previa de tu Envío",
+      "subtitle": "Revisa cómo aparecerá tu producto",
+      "original": "Metadatos Originales",
+      "rewritten": "Descripción Mejorada por IA",
+      "noImage": "No hay imagen disponible",
+      "edit": "Editar Detalles",
+      "confirm": "Confirmar Envío"
+    },
+    "success": {
+      "title": "¡Producto Enviado Exitosamente!",
+      "subtitle": "Tu producto ha sido enviado y está siendo procesado",
+      "message": "Estamos obteniendo metadatos y generando descripciones mejoradas por IA. Tu producto estará en vivo en breve.",
+      "actions": {
+        "viewSubmission": "Ver Envío",
+        "submitAnother": "Enviar Otro Producto",
+        "goToDashboard": "Ir al Panel"
+      }
+    }
+  },
+  "launches": {
+    "title": "Lanzamientos de Productos",
+    "subtitle": "Descubre productos increíbles de la red federada",
+    "search": {
+      "placeholder": "Buscar productos...",
+      "noResults": "No se encontraron productos que coincidan con tu búsqueda",
+      "results": "{count} productos encontrados"
+    },
+    "filters": {
+      "category": "Categoría",
+      "pricing": "Precios",
+      "sortBy": "Ordenar por",
+      "sortOptions": {
+        "newest": "Más recientes primero",
+        "oldest": "Más antiguos primero",
+        "popular": "Más populares",
+        "alphabetical": "Alfabético"
+      },
+      "clear": "Limpiar filtros"
+    },
+    "product": {
+      "visitWebsite": "Visitar Sitio Web",
+      "viewDetails": "Ver Detalles",
+      "share": "Compartir",
+      "report": "Reportar",
+      "launchedOn": "Lanzado el",
+      "category": "Categoría",
+      "pricing": "Precios",
+      "tags": "Etiquetas",
+      "noDescription": "No hay descripción disponible",
+      "noImage": "No hay imagen disponible"
+    },
+    "loading": "Cargando productos...",
+    "error": "Error al cargar productos. Por favor, inténtalo de nuevo más tarde.",
+    "empty": {
+      "title": "No se encontraron productos",
+      "description": "¡Sé el primero en enviar un producto!",
+      "action": "Enviar Producto"
+    },
+    "loadMore": "Cargar Más"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Gestiona tus envíos y cuenta",
+    "overview": {
+      "title": "Resumen",
+      "totalSubmissions": "Total de Envíos",
+      "pendingReview": "Pendientes de Revisión",
+      "published": "Publicados",
+      "views": "Total de Vistas"
+    },
+    "submissions": {
+      "title": "Tus Envíos",
+      "empty": {
+        "title": "Aún no hay envíos",
+        "description": "Comienza enviando tu primer producto",
+        "action": "Enviar Producto"
+      },
+      "status": {
+        "pending": "Pendiente",
+        "processing": "Procesando",
+        "published": "Publicado",
+        "rejected": "Rechazado"
+      },
+      "actions": {
+        "view": "Ver",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "resubmit": "Reenviar"
+      }
+    },
+    "analytics": {
+      "title": "Analíticas",
+      "views": "Vistas",
+      "clicks": "Clics",
+      "impressions": "Impresiones",
+      "ctr": "Tasa de Clics"
+    },
+    "settings": {
+      "title": "Configuración de Cuenta",
+      "profile": "Perfil",
+      "notifications": "Notificaciones",
+      "privacy": "Privacidad",
+      "billing": "Facturación"
+    }
+  },
+  "moderation": {
+    "title": "Cola de Moderación",
+    "subtitle": "Revisar y moderar envíos",
+    "queue": {
+      "pending": "Pendientes de Revisión",
+      "approved": "Aprobados",
+      "rejected": "Rechazados",
+      "empty": "No hay envíos en la cola"
+    },
+    "actions": {
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "requestChanges": "Solicitar Cambios",
+      "viewDetails": "Ver Detalles"
+    },
+    "filters": {
+      "all": "Todos",
+      "pending": "Pendientes",
+      "flagged": "Marcados",
+      "reported": "Reportados"
+    }
+  },
+  "footer": {
+    "description": "Una plataforma federada de código abierto para lanzar productos digitales.",
+    "platform": {
+      "title": "Plataforma",
+      "browseLaunches": "Explorar Lanzamientos",
+      "submitProduct": "Enviar Producto",
+      "apiDocs": "Documentación de API"
+    },
+    "federation": {
+      "title": "Federación",
+      "joinNetwork": "Unirse a la Red",
+      "instances": "Instancias",
+      "docs": "Documentos de Federación"
+    },
+    "community": {
+      "title": "Comunidad",
+      "github": "GitHub",
+      "documentation": "Documentación",
+      "support": "Soporte"
+    },
+    "copyright": "© 2024 ADLP. Código abierto bajo Licencia MIT."
+  },
+  "language": {
+    "title": "Idioma",
+    "select": "Seleccionar idioma",
+    "current": "Idioma actual: {language}",
+    "switch": "Cambiar a {language}",
+    "auto": "Detectar automáticamente",
+    "languages": {
+      "en": "Inglés",
+      "es": "Español",
+      "fr": "Francés",
+      "de": "Alemán"
+    }
+  },
+  "theme": {
+    "title": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "toggle": "Alternar tema"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
+    "network": "Error de red. Por favor verifica tu conexión.",
+    "unauthorized": "No estás autorizado para realizar esta acción.",
+    "forbidden": "Acceso denegado.",
+    "notFound": "El recurso solicitado no fue encontrado.",
+    "serverError": "Error del servidor. Por favor, inténtalo de nuevo más tarde.",
+    "validation": "Por favor verifica tu entrada e inténtalo de nuevo.",
+    "timeout": "La solicitud expiró. Por favor, inténtalo de nuevo.",
+    "offline": "Actualmente estás desconectado. Por favor verifica tu conexión."
+  },
+  "success": {
+    "saved": "Cambios guardados exitosamente",
+    "deleted": "Elemento eliminado exitosamente",
+    "created": "Elemento creado exitosamente",
+    "updated": "Elemento actualizado exitosamente",
+    "submitted": "Enviado exitosamente",
+    "sent": "Enviado exitosamente"
+  },
+  "validation": {
+    "required": "Este campo es requerido",
+    "email": "Por favor ingresa una dirección de correo electrónico válida",
+    "url": "Por favor ingresa una URL válida",
+    "minLength": "Debe tener al menos {min} caracteres",
+    "maxLength": "No debe tener más de {max} caracteres",
+    "pattern": "Formato inválido",
+    "numeric": "Debe ser un número",
+    "positive": "Debe ser un número positivo",
+    "integer": "Debe ser un número entero"
+  },
+  "dates": {
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "tomorrow": "Mañana",
+    "thisWeek": "Esta semana",
+    "lastWeek": "La semana pasada",
+    "thisMonth": "Este mes",
+    "lastMonth": "El mes pasado",
+    "thisYear": "Este año",
+    "lastYear": "El año pasado",
+    "never": "Nunca",
+    "just_now": "Justo ahora",
+    "minutes_ago": "hace {count} minutos",
+    "hours_ago": "hace {count} horas",
+    "days_ago": "hace {count} días",
+    "weeks_ago": "hace {count} semanas",
+    "months_ago": "hace {count} meses",
+    "years_ago": "hace {count} años"
+  }
+}

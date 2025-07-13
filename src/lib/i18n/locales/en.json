@@ -1,0 +1,469 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "view": "View",
+    "download": "Download",
+    "upload": "Upload",
+    "copy": "Copy",
+    "share": "Share",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "confirm": "Confirm",
+    "warning": "Warning",
+    "info": "Information",
+    "required": "Required",
+    "optional": "Optional",
+    "all": "All",
+    "none": "None",
+    "other": "Other",
+    "unknown": "Unknown",
+    "date": "Date",
+    "time": "Time",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "description": "Description",
+    "title": "Title",
+    "url": "URL",
+    "image": "Image",
+    "file": "File",
+    "size": "Size",
+    "type": "Type",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "public": "Public",
+    "private": "Private",
+    "draft": "Draft",
+    "published": "Published",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "new": "New",
+    "updated": "Updated",
+    "created": "Created",
+    "modified": "Modified",
+    "deleted": "Deleted"
+  },
+  "navigation": {
+    "home": "Home",
+    "launches": "Launches",
+    "submit": "Submit",
+    "dashboard": "Dashboard",
+    "moderation": "Moderation",
+    "profile": "Profile",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "toggleMenu": "Toggle menu"
+  },
+  "brand": {
+    "name": "ADLP",
+    "fullName": "API-Driven Launch Platform",
+    "subtitle": "Launch Platform",
+    "tagline": "Federated Product Launches",
+    "description": "An open-source, federated platform for launching digital products."
+  },
+  "home": {
+    "hero": {
+      "title": "Launch Your Product on the",
+      "titleHighlight": "Federated Web",
+      "description": "ADLP is an open-source, API-first platform for launching digital products. Join our decentralized network where instances communicate peer-to-peer, ensuring your launches reach the widest audience without central control.",
+      "submitProduct": "Submit Your Product",
+      "browseLaunches": "Browse Launches"
+    },
+    "features": {
+      "title": "Why Choose ADLP?",
+      "subtitle": "Built for the modern web with federation, AI, and developer-first principles",
+      "federated": {
+        "title": "Federated Network",
+        "description": "Your launches automatically distribute across connected instances, reaching audiences everywhere without central gatekeepers."
+      },
+      "ai": {
+        "title": "AI-Powered Content",
+        "description": "Our AI rewrites your product descriptions for uniqueness and SEO optimization, preventing duplicate content penalties."
+      },
+      "api": {
+        "title": "API-First Design",
+        "description": "Everything is accessible via our REST API. Build integrations, automate submissions, and create custom experiences."
+      },
+      "openSource": {
+        "title": "Open Source",
+        "description": "Fully open source under MIT license. Run your own instance, contribute features, or fork for custom needs."
+      },
+      "simple": {
+        "title": "Simple Submission",
+        "description": "Just provide a URL. We automatically fetch metadata, logos, and generate optimized descriptions for your product."
+      },
+      "privacy": {
+        "title": "Privacy Focused",
+        "description": "No tracking, no ads, no data mining. Your submissions and user data remain private and secure."
+      }
+    },
+    "recentLaunches": {
+      "title": "Recent Launches",
+      "subtitle": "Discover the latest products launched on our platform",
+      "loading": "Loading recent launches...",
+      "error": "Unable to load recent launches. Please try again later.",
+      "empty": {
+        "title": "No launches yet",
+        "description": "Be the first to launch your product on ADLP!",
+        "action": "Submit First Product"
+      },
+      "visitProduct": "Visit Product →",
+      "viewAll": "View All Launches"
+    },
+    "cta": {
+      "title": "Ready to Launch?",
+      "description": "Join thousands of makers launching their products on the federated web",
+      "action": "Submit Your Product"
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign In",
+      "subtitle": "Welcome back to ADLP",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign In",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up here",
+      "errors": {
+        "invalidCredentials": "Invalid email or password",
+        "emailRequired": "Email is required",
+        "passwordRequired": "Password is required",
+        "invalidEmail": "Please enter a valid email address"
+      }
+    },
+    "signUp": {
+      "title": "Sign Up",
+      "subtitle": "Join the ADLP community",
+      "email": "Email address",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in here",
+      "terms": "By creating an account, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and",
+      "privacyLink": "Privacy Policy",
+      "errors": {
+        "emailRequired": "Email is required",
+        "passwordRequired": "Password is required",
+        "passwordTooShort": "Password must be at least 8 characters",
+        "passwordMismatch": "Passwords do not match",
+        "invalidEmail": "Please enter a valid email address",
+        "emailTaken": "An account with this email already exists"
+      }
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email to receive reset instructions",
+      "email": "Email address",
+      "submit": "Send Reset Link",
+      "backToSignIn": "Back to sign in",
+      "success": "Password reset link sent to your email",
+      "errors": {
+        "emailRequired": "Email is required",
+        "invalidEmail": "Please enter a valid email address",
+        "userNotFound": "No account found with this email address"
+      }
+    }
+  },
+  "submit": {
+    "title": "Submit Your Product",
+    "subtitle": "Launch your product on the federated web",
+    "form": {
+      "url": {
+        "label": "Product URL",
+        "placeholder": "https://yourproduct.com",
+        "help": "Enter the URL of your product. We'll automatically fetch metadata and generate descriptions."
+      },
+      "category": {
+        "label": "Category",
+        "placeholder": "Select a category",
+        "options": {
+          "web": "Web App",
+          "mobile": "Mobile App",
+          "desktop": "Desktop App",
+          "saas": "SaaS",
+          "tool": "Developer Tool",
+          "game": "Game",
+          "extension": "Browser Extension",
+          "api": "API/Service",
+          "other": "Other"
+        }
+      },
+      "tags": {
+        "label": "Tags",
+        "placeholder": "Add tags (press Enter)",
+        "help": "Add relevant tags to help users discover your product"
+      },
+      "pricing": {
+        "label": "Pricing",
+        "options": {
+          "free": "Free",
+          "freemium": "Freemium",
+          "paid": "Paid",
+          "subscription": "Subscription",
+          "oneTime": "One-time purchase"
+        }
+      },
+      "submit": "Submit Product",
+      "submitting": "Submitting...",
+      "preview": "Preview",
+      "errors": {
+        "urlRequired": "Product URL is required",
+        "invalidUrl": "Please enter a valid URL",
+        "categoryRequired": "Please select a category",
+        "fetchFailed": "Failed to fetch product metadata. Please check the URL and try again."
+      }
+    },
+    "preview": {
+      "title": "Preview Your Submission",
+      "subtitle": "Review how your product will appear",
+      "original": "Original Metadata",
+      "rewritten": "AI-Enhanced Description",
+      "noImage": "No image available",
+      "edit": "Edit Details",
+      "confirm": "Confirm Submission"
+    },
+    "success": {
+      "title": "Product Submitted Successfully!",
+      "subtitle": "Your product has been submitted and is being processed",
+      "message": "We're fetching metadata and generating AI-enhanced descriptions. Your product will be live shortly.",
+      "actions": {
+        "viewSubmission": "View Submission",
+        "submitAnother": "Submit Another Product",
+        "goToDashboard": "Go to Dashboard"
+      }
+    }
+  },
+  "launches": {
+    "title": "Product Launches",
+    "subtitle": "Discover amazing products from the federated network",
+    "search": {
+      "placeholder": "Search products...",
+      "noResults": "No products found matching your search",
+      "results": "{count} products found"
+    },
+    "filters": {
+      "category": "Category",
+      "pricing": "Pricing",
+      "sortBy": "Sort by",
+      "sortOptions": {
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "popular": "Most popular",
+        "alphabetical": "Alphabetical"
+      },
+      "clear": "Clear filters"
+    },
+    "product": {
+      "visitWebsite": "Visit Website",
+      "viewDetails": "View Details",
+      "share": "Share",
+      "report": "Report",
+      "launchedOn": "Launched on",
+      "category": "Category",
+      "pricing": "Pricing",
+      "tags": "Tags",
+      "noDescription": "No description available",
+      "noImage": "No image available"
+    },
+    "loading": "Loading products...",
+    "error": "Failed to load products. Please try again later.",
+    "empty": {
+      "title": "No products found",
+      "description": "Be the first to submit a product!",
+      "action": "Submit Product"
+    },
+    "loadMore": "Load More"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Manage your submissions and account",
+    "overview": {
+      "title": "Overview",
+      "totalSubmissions": "Total Submissions",
+      "pendingReview": "Pending Review",
+      "published": "Published",
+      "views": "Total Views"
+    },
+    "submissions": {
+      "title": "Your Submissions",
+      "empty": {
+        "title": "No submissions yet",
+        "description": "Start by submitting your first product",
+        "action": "Submit Product"
+      },
+      "status": {
+        "pending": "Pending",
+        "processing": "Processing",
+        "published": "Published",
+        "rejected": "Rejected"
+      },
+      "actions": {
+        "view": "View",
+        "edit": "Edit",
+        "delete": "Delete",
+        "resubmit": "Resubmit"
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "views": "Views",
+      "clicks": "Clicks",
+      "impressions": "Impressions",
+      "ctr": "Click-through Rate"
+    },
+    "settings": {
+      "title": "Account Settings",
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "privacy": "Privacy",
+      "billing": "Billing"
+    }
+  },
+  "moderation": {
+    "title": "Moderation Queue",
+    "subtitle": "Review and moderate submissions",
+    "queue": {
+      "pending": "Pending Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "empty": "No submissions in queue"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "requestChanges": "Request Changes",
+      "viewDetails": "View Details"
+    },
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "flagged": "Flagged",
+      "reported": "Reported"
+    }
+  },
+  "footer": {
+    "description": "An open-source, federated platform for launching digital products.",
+    "platform": {
+      "title": "Platform",
+      "browseLaunches": "Browse Launches",
+      "submitProduct": "Submit Product",
+      "apiDocs": "API Documentation"
+    },
+    "federation": {
+      "title": "Federation",
+      "joinNetwork": "Join Network",
+      "instances": "Instances",
+      "docs": "Federation Docs"
+    },
+    "community": {
+      "title": "Community",
+      "github": "GitHub",
+      "documentation": "Documentation",
+      "support": "Support"
+    },
+    "copyright": "© 2024 ADLP. Open source under MIT License."
+  },
+  "language": {
+    "title": "Language",
+    "select": "Select language",
+    "current": "Current language: {language}",
+    "switch": "Switch to {language}",
+    "auto": "Auto-detect",
+    "languages": {
+      "en": "English",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German"
+    }
+  },
+  "theme": {
+    "title": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "forbidden": "Access denied.",
+    "notFound": "The requested resource was not found.",
+    "serverError": "Server error. Please try again later.",
+    "validation": "Please check your input and try again.",
+    "timeout": "Request timed out. Please try again.",
+    "offline": "You are currently offline. Please check your connection."
+  },
+  "success": {
+    "saved": "Changes saved successfully",
+    "deleted": "Item deleted successfully",
+    "created": "Item created successfully",
+    "updated": "Item updated successfully",
+    "submitted": "Submitted successfully",
+    "sent": "Sent successfully"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email address",
+    "url": "Please enter a valid URL",
+    "minLength": "Must be at least {min} characters",
+    "maxLength": "Must be no more than {max} characters",
+    "pattern": "Invalid format",
+    "numeric": "Must be a number",
+    "positive": "Must be a positive number",
+    "integer": "Must be a whole number"
+  },
+  "dates": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow",
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "thisYear": "This year",
+    "lastYear": "Last year",
+    "never": "Never",
+    "just_now": "Just now",
+    "minutes_ago": "{count} minutes ago",
+    "hours_ago": "{count} hours ago",
+    "days_ago": "{count} days ago",
+    "weeks_ago": "{count} weeks ago",
+    "months_ago": "{count} months ago",
+    "years_ago": "{count} years ago"
+  }
+}
