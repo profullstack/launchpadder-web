@@ -22,8 +22,8 @@
     "db:seed": "node scripts/seed.js"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.4.0",
     "@supabase/supabase-js": "^2.39.0",
-    "@sveltejs/adapter-node": "^2.0.0",
     "@sveltejs/kit": "^2.0.0",
     "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
@@ -34,10 +34,12 @@
     "openai": "^4.24.0",
     "puppeteer": "^24.12.1",
     "sharp": "^0.33.0",
+    "stripe": "^14.21.0",
     "svelte": "^4.2.8",
     "vite": "^5.0.0"
   },
   "devDependencies": {
+    "@sveltejs/adapter-node": "^2.1.2",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
     "c8": "^8.0.1",
     "chai": "^4.3.10",
@@ -48,6 +50,7 @@
     "nock": "^13.5.6",
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.1.2",
+    "sinon": "^21.0.0",
     "supertest": "^6.3.3"
   },
   "keywords": [
