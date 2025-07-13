@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import CheckoutForm from '$lib/components/CheckoutForm.svelte';
   import CryptoCheckoutForm from '$lib/components/CryptoCheckoutForm.svelte';
-  import { authService } from '$lib/services/auth-service.js';
+  import { AuthService } from '$lib/services/auth-service.js';
   
   let user = null;
   let loading = true;
@@ -15,6 +15,7 @@
   
   onMount(async () => {
     // Check authentication
+    const authService = new AuthService();
     user = await authService.getCurrentUser();
     if (!user) {
       goto('/auth/login?redirect=/checkout');

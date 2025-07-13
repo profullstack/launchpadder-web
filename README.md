@@ -65,9 +65,61 @@ A federated, API-driven launch platform similar to Product Hunt, built with Svel
 ### Prerequisites
 - Node.js 20 or newer
 - pnpm (recommended) or npm
-- Supabase account
+- Docker & Docker Compose (for self-hosting) OR Supabase Cloud account
 
-### Setup
+### 🐳 Option 1: Self-Hosted with Docker (Recommended)
+
+**Complete self-hosted setup with official Supabase stack**
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd launchpadder-web
+   ```
+
+2. **One-command deployment**
+   ```bash
+   ./scripts/deploy-docker.sh
+   ```
+
+3. **Access your platform**
+   - 🚀 **LaunchPadder Web**: http://localhost:3000
+   - 🎛️ **Supabase Studio**: http://localhost:3001
+   - 🔌 **API Gateway**: http://localhost:8000
+
+**Manual Docker Setup:**
+
+```bash
+# Generate secure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start all services
+docker-compose up -d
+
+# Run migrations
+pnpm install
+pnpm run db:migrate
+```
+
+**Management Commands:**
+```bash
+# View logs
+./scripts/deploy-docker.sh logs
+
+# Stop services
+./scripts/deploy-docker.sh stop
+
+# Backup database
+./scripts/deploy-docker.sh backup
+
+# Update platform
+./scripts/deploy-docker.sh update
+```
+
+### ☁️ Option 2: Cloud Setup with Supabase
+
+**Quick setup using Supabase Cloud**
 
 1. **Clone the repository**
    ```bash
@@ -87,7 +139,7 @@ A federated, API-driven launch platform similar to Product Hunt, built with Svel
    
    Configure the following environment variables:
    ```env
-   # Supabase
+   # Supabase Cloud
    PUBLIC_SUPABASE_URL=your_supabase_url
    PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key

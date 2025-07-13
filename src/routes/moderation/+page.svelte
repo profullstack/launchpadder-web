@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { authService } from '$lib/services/auth-service.js';
+  import { AuthService } from '$lib/services/auth-service.js';
   
   let user = null;
   let permissions = null;
@@ -26,6 +26,7 @@
   
   onMount(async () => {
     // Check authentication
+    const authService = new AuthService();
     user = await authService.getCurrentUser();
     if (!user) {
       goto('/auth/login?redirect=/moderation');

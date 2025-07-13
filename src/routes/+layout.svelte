@@ -3,11 +3,19 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/config/supabase.js';
   import { goto } from '$app/navigation';
+  import MobileNav from '$lib/components/MobileNav.svelte';
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import { themeStore } from '$lib/stores/theme.js';
+  import '$lib/styles/themes.css';
   
   let user = null;
   let loading = true;
+  let mobileMenuOpen = false;
 
   onMount(async () => {
+    // Initialize theme system
+    themeStore.init();
+    
     // Get initial session
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user ?? null;
@@ -31,7 +39,37 @@
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    mobileMenuOpen = false;
   }
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+    // Prevent body scroll when menu is open
+    if (typeof document !== 'undefined') {
+      if (mobileMenuOpen) {
+        document.body.classList.add('mobile-menu-open');
+      } else {
+        document.body.classList.remove('mobile-menu-open');
+      }
+    }
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpen = false;
+    // Re-enable body scroll
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('mobile-menu-open');
+    }
+  }
+
+  // Clean up on component destroy
+  onMount(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('mobile-menu-open');
+      }
+    };
+  });
 </script>
 
 <svelte:head>
@@ -50,7 +88,8 @@
         </a>
       </div>
       
-      <div class="nav-links">
+      <!-- Desktop Navigation -->
+      <div class="nav-links desktop-nav">
         <a href="/" class:active={$page.url.pathname === '/'}>Home</a>
         <a href="/launches" class:active={$page.url.pathname === '/launches'}>Launches</a>
         <a href="/submit" class:active={$page.url.pathname === '/submit'}>Submit</a>
@@ -59,13 +98,33 @@
           <div class="loading-spinner"></div>
         {:else if user}
           <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>Dashboard</a>
+          <ThemeToggle variant="icon" size="medium" showLabel={false} />
           <button on:click={handleSignOut} class="btn btn-outline">Sign Out</button>
         {:else}
-          <a href="/auth/signin" class="btn btn-primary">Sign In</a>
+          <ThemeToggle variant="icon" size="medium" showLabel={false} />
+          <a href="/auth/login" class="btn btn-primary">Sign In</a>
         {/if}
       </div>
+
+      <!-- Mobile Hamburger Menu -->
+      <button class="mobile-menu-btn" on:click={toggleMobileMenu} aria-label="Toggle menu">
+        <div class="hamburger" class:open={mobileMenuOpen}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </button>
     </nav>
   </header>
+
+  <!-- Mobile Navigation -->
+  <MobileNav
+    bind:isOpen={mobileMenuOpen}
+    {user}
+    {loading}
+    on:signout={handleSignOut}
+    on:close={closeMobileMenu}
+  />
 
   <main class="main">
     <slot />
@@ -122,8 +181,9 @@
   :global(body) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: #fafafa;
+    color: var(--color-text);
+    background-color: var(--color-background);
+    transition: color 0.3s ease, background-color 0.3s ease;
   }
 
   .app {
@@ -133,11 +193,12 @@
   }
 
   .header {
-    background: white;
-    border-bottom: 1px solid #e1e5e9;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
     z-index: 100;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
   .nav {
@@ -161,12 +222,12 @@
   .nav-brand h1 {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #2563eb;
+    color: var(--color-primary);
   }
 
   .brand-subtitle {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--color-text-secondary);
   }
 
   .nav-links {
@@ -177,14 +238,14 @@
 
   .nav-links a {
     text-decoration: none;
-    color: #6b7280;
+    color: var(--color-text-secondary);
     font-weight: 500;
     transition: color 0.2s;
   }
 
   .nav-links a:hover,
   .nav-links a.active {
-    color: #2563eb;
+    color: var(--color-primary);
   }
 
   .btn {
@@ -201,30 +262,30 @@
   }
 
   .btn-primary {
-    background: #2563eb;
+    background: var(--color-primary);
     color: white;
   }
 
   .btn-primary:hover {
-    background: #1d4ed8;
+    background: var(--color-primary-hover);
   }
 
   .btn-outline {
     background: transparent;
-    color: #6b7280;
-    border: 1px solid #d1d5db;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
   }
 
   .btn-outline:hover {
-    background: #f9fafb;
-    color: #374151;
+    background: var(--color-surface-hover);
+    color: var(--color-text);
   }
 
   .loading-spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid #e5e7eb;
-    border-top: 2px solid #2563eb;
+    border: 2px solid var(--color-border);
+    border-top: 2px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -243,9 +304,10 @@
   }
 
   .footer {
-    background: #1f2937;
-    color: white;
+    background: var(--color-surface-dark);
+    color: var(--color-text-inverse);
     margin-top: auto;
+    transition: background-color 0.3s ease;
   }
 
   .footer-content {
@@ -260,11 +322,11 @@
   .footer-section h3,
   .footer-section h4 {
     margin-bottom: 1rem;
-    color: white;
+    color: var(--color-text-inverse);
   }
 
   .footer-section p {
-    color: #9ca3af;
+    color: var(--color-text-muted);
     margin-bottom: 1rem;
   }
 
@@ -277,35 +339,104 @@
   }
 
   .footer-section ul li a {
-    color: #9ca3af;
+    color: var(--color-text-muted);
     text-decoration: none;
     transition: color 0.2s;
   }
 
   .footer-section ul li a:hover {
-    color: white;
+    color: var(--color-text-inverse);
   }
 
   .footer-bottom {
-    border-top: 1px solid #374151;
+    border-top: 1px solid var(--color-border-dark);
     padding: 1rem;
     text-align: center;
-    color: #9ca3af;
+    color: var(--color-text-muted);
     max-width: 1200px;
     margin: 0 auto;
   }
 
-  @media (max-width: 768px) {
-    .nav {
-      flex-direction: column;
-      height: auto;
-      padding: 1rem;
-      gap: 1rem;
+  /* Mobile-first responsive design */
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s;
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--color-surface-hover);
+  }
+
+  .hamburger {
+    width: 24px;
+    height: 18px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .hamburger span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: var(--color-text);
+    border-radius: 1px;
+    transition: all 0.3s ease-in-out;
+    transform-origin: center;
+  }
+
+  .hamburger.open span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+  }
+
+  .hamburger.open span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .hamburger.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+  }
+
+  /* Tablet and Desktop */
+  @media (min-width: 769px) {
+    .desktop-nav {
+      display: flex;
     }
 
-    .nav-links {
-      flex-wrap: wrap;
-      justify-content: center;
+    .mobile-menu-btn {
+      display: none;
+    }
+
+    .nav {
+      height: 64px;
+    }
+  }
+
+  /* Mobile styles */
+  @media (max-width: 768px) {
+    .nav {
+      height: 60px;
+      padding: 0 1rem;
+    }
+
+    .nav-brand h1 {
+      font-size: 1.25rem;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
     }
 
     .main {
@@ -315,6 +446,39 @@
     .footer-content {
       grid-template-columns: 1fr;
       text-align: center;
+      padding: 2rem 1rem 1rem;
     }
+
+    .footer-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .footer-section:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  /* Small mobile devices */
+  @media (max-width: 480px) {
+    .nav {
+      padding: 0 0.75rem;
+    }
+
+    .nav-brand h1 {
+      font-size: 1.125rem;
+    }
+
+    .main {
+      padding: 0.75rem;
+    }
+
+    .footer-content {
+      padding: 1.5rem 0.75rem 1rem;
+    }
+  }
+
+  /* Prevent body scroll when mobile menu is open */
+  :global(body.mobile-menu-open) {
+    overflow: hidden;
   }
 </style>
