@@ -57,9 +57,9 @@ RUN pnpm install --prod --frozen-lockfile
 # Copy database migrations
 COPY --from=builder /app/supabase ./supabase
 
-# Create uploads directory
-RUN mkdir -p /app/uploads
-RUN chown sveltekit:nodejs /app/uploads
+# Create uploads and logs directories
+RUN mkdir -p /app/uploads /app/logs
+RUN chown sveltekit:nodejs /app/uploads /app/logs
 
 USER sveltekit
 
