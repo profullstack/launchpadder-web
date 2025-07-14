@@ -5,16 +5,18 @@
 
 import { json } from '@sveltejs/kit';
 import { ModerationService } from '$lib/services/moderation-service.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const moderationService = new ModerationService({
-  supabase
-});
+// Initialize moderation service lazily
+let moderationService;
+function getModerationService() {
+  if (!moderationService) {
+    moderationService = new ModerationService({
+      supabase
+    });
+  }
+  return moderationService;
+}
 
 export async function GET({ cookies }) {
   try {
@@ -39,7 +41,7 @@ export async function GET({ cookies }) {
     }
     
     // Get moderation statistics
-    const stats = await moderationService.getModerationStats();
+    const stats = await getModerationService().getModerationStats();
     
     return json(stats);
     

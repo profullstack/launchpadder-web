@@ -5,7 +5,7 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { createSupabaseClient } from '../../../../../lib/config/supabase.js';
+import { supabase } from '../../../../../lib/config/supabase.js';
 
 /**
  * GET /api/v1/federation/instances
@@ -19,7 +19,7 @@ export async function GET({ url }) {
     const status = url.searchParams.get('status');
     const search = url.searchParams.get('search');
 
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Build query for federation instances
     let query = supabase
@@ -184,7 +184,7 @@ export async function POST({ request, locals }) {
       }, { status: 400 });
     }
 
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Check if instance already exists
     const { data: existing } = await supabase

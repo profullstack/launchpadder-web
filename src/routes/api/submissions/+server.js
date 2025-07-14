@@ -4,7 +4,17 @@
  */
 
 import { json, error } from '@sveltejs/kit';
-import { submissionService } from '$lib/services/submission-service.js';
+import { createSubmissionService } from '$lib/services/submission-service.js';
+import { supabase } from '$lib/config/supabase.js';
+
+// Initialize submission service lazily
+let submissionService;
+function getSubmissionService() {
+  if (!submissionService) {
+    submissionService = createSubmissionService({ supabase });
+  }
+  return submissionService;
+}
 
 /**
  * POST /api/submissions - Create a new submission
@@ -21,7 +31,7 @@ export async function POST({ request, locals }) {
     const body = await request.json();
     
     // Create submission
-    const submission = await submissionService.createSubmission(body, user.id);
+    const submission = await getSubmissionService().createSubmission(body, user.id);
     
     return json({
       success: true,
@@ -91,7 +101,7 @@ export async function GET({ url }) {
     }
 
     // Get submissions
-    const result = await submissionService.getSubmissions(options);
+    const result = await getSubmissionService().getSubmissions(options);
     
     return json({
       success: true,

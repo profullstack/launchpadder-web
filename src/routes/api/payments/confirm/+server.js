@@ -5,17 +5,19 @@
 
 import { json } from '@sveltejs/kit';
 import { PaymentService } from '$lib/services/payment-service.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const paymentService = new PaymentService({
-  supabase,
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY
-});
+// Initialize payment service lazily
+let paymentService;
+function getPaymentService() {
+  if (!paymentService) {
+    paymentService = new PaymentService({
+      supabase,
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY
+    });
+  }
+  return paymentService;
+}
 
 export async function POST({ request, cookies }) {
   try {
@@ -38,7 +40,7 @@ export async function POST({ request, cookies }) {
     }
     
     // Confirm payment with Stripe
-    const paymentResult = await paymentService.confirmPayment(paymentIntentId);
+    const paymentResult = await getPaymentService().confirmPayment(paymentIntentId);
     
     if (paymentResult.status === 'succeeded') {
       // Update submission status if submissionId provided

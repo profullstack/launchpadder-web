@@ -155,3 +155,13 @@ export function getLocalizedPath(path, localeCode = DEFAULT_LOCALE) {
 export function removeLocaleFromPath(path) {
   return path.replace(/^\/[a-z]{2}(\/|$)/, '/');
 }
+
+/**
+ * Get text direction for a locale
+ * @param {string} localeCode - The locale code
+ * @returns {string} Text direction ('ltr' or 'rtl')
+ */
+export function getTextDirection(localeCode = DEFAULT_LOCALE) {
+  const validLocale = validateLocale(localeCode);
+  return LOCALE_METADATA[validLocale]?.dir || 'ltr';
+}

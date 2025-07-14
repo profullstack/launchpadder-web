@@ -5,16 +5,18 @@
 
 import { json } from '@sveltejs/kit';
 import { ModerationService } from '$lib/services/moderation-service.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const moderationService = new ModerationService({
-  supabase
-});
+// Initialize moderation service lazily
+let moderationService;
+function getModerationService() {
+  if (!moderationService) {
+    moderationService = new ModerationService({
+      supabase
+    });
+  }
+  return moderationService;
+}
 
 export async function GET({ url, cookies }) {
   try {
@@ -51,16 +53,16 @@ export async function GET({ url, cookies }) {
     
     if (assignedOnly) {
       // Get submissions assigned to this moderator
-      result = await moderationService.getModerationQueue(user.id, offset, limit);
+      result = await getModerationService().getModerationQueue(user.id, offset, limit);
     } else if (status === 'pending_review') {
       // Get all pending submissions
-      result = await moderationService.getPendingSubmissions(offset, limit);
+      result = await getModerationService().getPendingSubmissions(offset, limit);
     } else {
       // Get submissions by status with filters
       const filters = {};
       if (assignedOnly) filters.moderatorId = user.id;
       
-      result = await moderationService.getSubmissionsByStatus(status, filters, offset, limit);
+      result = await getModerationService().getSubmissionsByStatus(status, filters, offset, limit);
     }
     
     return json({
@@ -112,7 +114,7 @@ export async function POST({ request, cookies }) {
         }
         
         if (submissionIds.length === 1) {
-          result = await moderationService.assignModerator(submissionIds[0], moderatorId);
+          result = await getModerationService().assignModerator(submissionIds[0], moderatorId);
         } else {
           // Use database function for bulk assignment
           const { data, error } = await supabase

@@ -7,7 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
-import { createSupabaseClient } from '../../../lib/config/supabase.js';
+import { supabase } from '../../../lib/config/supabase.js';
 
 /**
  * Rate limiting store (in production, use Redis or similar)
@@ -74,7 +74,7 @@ async function verifyToken(token) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
     
     if (decoded.type === 'federation_partner') {
       // Get federation partner info
@@ -183,7 +183,7 @@ export async function handle({ event, resolve }) {
         tier = authInfo.tier;
       } else if (apiKey) {
         // Handle API key authentication (for direct API key usage)
-        const supabase = createSupabaseClient();
+        // Use imported supabase client directly
         const { data: partner, error } = await supabase
           .from('federation_partners')
           .select('*')

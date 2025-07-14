@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
-import { createSupabaseClient } from '../../../../../lib/config/supabase.js';
+import { supabase } from '../../../../../lib/config/supabase.js';
 
 /**
  * POST /api/v1/auth/token
@@ -36,7 +36,7 @@ export async function POST({ request }) {
       }, { status: 400 });
     }
 
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Find federation partner by API key
     const { data: partner, error: partnerError } = await supabase

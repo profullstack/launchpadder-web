@@ -4,12 +4,7 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { supabase } from '../../../../lib/config/supabase.js';
 
 export async function GET({ cookies }) {
   try {

@@ -6,21 +6,30 @@
 import { json } from '@sveltejs/kit';
 import { ModerationService } from '$lib/services/moderation-service.js';
 import { EnhancedAIService } from '$lib/services/enhanced-ai-service.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize services lazily
+let aiService;
+let moderationService;
 
-const aiService = new EnhancedAIService({
-  openaiApiKey: process.env.OPENAI_API_KEY
-});
+function getAIService() {
+  if (!aiService) {
+    aiService = new EnhancedAIService({
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  return aiService;
+}
 
-const moderationService = new ModerationService({
-  supabase,
-  aiService
-});
+function getModerationService() {
+  if (!moderationService) {
+    moderationService = new ModerationService({
+      supabase,
+      aiService: getAIService()
+    });
+  }
+  return moderationService;
+}
 
 export async function POST({ request, cookies }) {
   try {
@@ -59,7 +68,7 @@ export async function POST({ request, cookies }) {
     switch (decision) {
       case 'approved':
       case 'rejected':
-        result = await moderationService.reviewSubmission(
+        result = await getModerationService().reviewSubmission(
           submissionId,
           user.id,
           decision,
@@ -72,7 +81,7 @@ export async function POST({ request, cookies }) {
           return json({ error: 'Escalation reason is required' }, { status: 400 });
         }
         
-        result = await moderationService.escalateSubmission(
+        result = await getModerationService().escalateSubmission(
           submissionId,
           escalationReason,
           user.id
@@ -140,7 +149,7 @@ export async function GET({ url, cookies }) {
     const submissionData = submission[0];
     
     // Get moderation history
-    const history = await moderationService.getModerationHistory(submissionId);
+    const history = await getModerationService().getModerationHistory(submissionId);
     
     return json({
       success: true,

@@ -15,6 +15,7 @@ async function checkDatabase() {
     const start = performance.now();
     
     try {
+        const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(supabaseUrl, supabaseKey);
         
         // Simple query to test connectivity
@@ -259,6 +260,7 @@ export async function GET({ url }) {
 export async function HEAD() {
     try {
         // Quick database connectivity check
+        const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(supabaseUrl, supabaseKey);
         await supabase.from('submissions').select('count').limit(1);
         

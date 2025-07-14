@@ -108,16 +108,29 @@
       <div class="form-group">
         <label for="password" class="form-label">Password</label>
         <div class="password-input-wrapper">
-          <input
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            bind:value={password}
-            placeholder="Enter your password"
-            class="form-input"
-            class:error={password && !isValidPassword}
-            required
-            autocomplete="current-password"
-          />
+          {#if showPassword}
+            <input
+              id="password"
+              type="text"
+              bind:value={password}
+              placeholder="Enter your password"
+              class="form-input"
+              class:error={password && !isValidPassword}
+              required
+              autocomplete="current-password"
+            />
+          {:else}
+            <input
+              id="password"
+              type="password"
+              bind:value={password}
+              placeholder="Enter your password"
+              class="form-input"
+              class:error={password && !isValidPassword}
+              required
+              autocomplete="current-password"
+            />
+          {/if}
           <button
             type="button"
             on:click={togglePasswordVisibility}

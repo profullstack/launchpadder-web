@@ -5,21 +5,23 @@
 
 import { json } from '@sveltejs/kit';
 import { PaymentService } from '$lib/services/payment-service.js';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const paymentService = new PaymentService({
-  supabase,
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY
-});
+// Initialize payment service lazily
+let paymentService;
+function getPaymentService() {
+  if (!paymentService) {
+    paymentService = new PaymentService({
+      supabase,
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY
+    });
+  }
+  return paymentService;
+}
 
 export async function POST({ request }) {
   try {
@@ -41,7 +43,7 @@ export async function POST({ request }) {
     }
     
     // Handle the event
-    const result = await paymentService.handleWebhook(event);
+    const result = await getPaymentService().handleWebhook(event);
     
     if (result.processed) {
       console.log(`Webhook processed: ${event.type} for ${result.paymentIntentId}`);

@@ -54,6 +54,7 @@
     "svelte": "^4.2.8",
     "svelte-i18n": "^4.0.1",
     "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-dist": "^5.26.2",
     "swagger-ui-express": "^5.0.1",
     "systeminformation": "^5.27.7",
     "uuid": "^11.1.0",

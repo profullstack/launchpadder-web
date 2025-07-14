@@ -4,7 +4,17 @@
  */
 
 import { json, error } from '@sveltejs/kit';
-import { submissionService } from '$lib/services/submission-service.js';
+import { createSubmissionService } from '$lib/services/submission-service.js';
+import { supabase } from '$lib/config/supabase.js';
+
+// Initialize submission service lazily
+let submissionService;
+function getSubmissionService() {
+  if (!submissionService) {
+    submissionService = createSubmissionService({ supabase });
+  }
+  return submissionService;
+}
 
 /**
  * GET /api/submissions/[id] - Get a specific submission by ID
@@ -17,7 +27,7 @@ export async function GET({ params }) {
       throw error(400, 'Submission ID is required');
     }
 
-    const submission = await submissionService.getSubmissionById(id);
+    const submission = await getSubmissionService().getSubmissionById(id);
     
     return json({
       success: true,
@@ -69,7 +79,7 @@ export async function PUT({ params, request, locals }) {
       throw error(400, 'No valid fields to update');
     }
 
-    const submission = await submissionService.updateSubmission(id, filteredData, user.id);
+    const submission = await getSubmissionService().updateSubmission(id, filteredData, user.id);
     
     return json({
       success: true,
@@ -112,7 +122,7 @@ export async function DELETE({ params, locals }) {
       throw error(401, 'Authentication required');
     }
 
-    await submissionService.deleteSubmission(id, user.id);
+    await getSubmissionService().deleteSubmission(id, user.id);
     
     return json({
       success: true,

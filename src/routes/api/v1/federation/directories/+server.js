@@ -6,7 +6,7 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { createSupabaseClient } from '../../../../../lib/config/supabase.js';
+import { supabase } from '../../../../../lib/config/supabase.js';
 
 /**
  * GET /api/v1/federation/directories
@@ -21,7 +21,7 @@ export async function GET({ url }) {
     const status = url.searchParams.get('status') || 'active';
     const search = url.searchParams.get('search');
 
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Build query for directories from database
     let query = supabase

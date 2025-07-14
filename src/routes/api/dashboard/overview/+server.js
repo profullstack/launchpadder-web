@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { createSupabaseClient } from '../../../../lib/config/supabase.js';
+import { supabase } from '../../../../lib/config/supabase.js';
 import { DashboardService } from '../../../../lib/services/dashboard-service.js';
 
 /**
@@ -9,7 +9,7 @@ import { DashboardService } from '../../../../lib/services/dashboard-service.js'
 export async function GET({ request, url }) {
   try {
     // Create Supabase client
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Verify authentication and admin role
     const authHeader = request.headers.get('authorization');

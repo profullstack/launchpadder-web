@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { createSupabaseClient } from '../../../../../lib/config/supabase.js';
+import { supabase } from '../../../../../lib/config/supabase.js';
 import { FederationDiscoveryService } from '../../../../../lib/services/federation-discovery-service.js';
 import { FederatedSubmissionService } from '../../../../../lib/services/federated-submission-service.js';
 
@@ -19,7 +19,7 @@ export async function POST({ request, params }) {
     }
 
     // Create Supabase client
-    const supabase = createSupabaseClient();
+    // Use imported supabase client directly
 
     // Verify authentication
     const authHeader = request.headers.get('authorization');

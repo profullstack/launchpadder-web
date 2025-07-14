@@ -6,17 +6,17 @@
  */
 
 import { json } from '@sveltejs/kit';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/config/supabase.js';
 import { FederationDiscoveryService } from '../../../../lib/services/federation-discovery-service.js';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-// Initialize federation discovery service
-const federationService = new FederationDiscoveryService(supabase);
+// Initialize federation discovery service lazily
+let federationService;
+function getFederationService() {
+  if (!federationService) {
+    federationService = new FederationDiscoveryService(supabase);
+  }
+  return federationService;
+}
 
 /**
  * GET /api/federation/instances
@@ -29,7 +29,7 @@ export async function GET({ url }) {
     const limit = parseInt(url.searchParams.get('limit')) || 50;
 
     // Get known instances
-    const instances = await federationService.getKnownInstances({
+    const instances = await getFederationService().getKnownInstances({
       status,
       limit
     });
@@ -99,7 +99,7 @@ export async function POST({ request }) {
     }
 
     // Register the instance
-    const result = await federationService.registerInstance({
+    const result = await getFederationService().registerInstance({
       name,
       base_url,
       description: description || '',
@@ -108,11 +108,11 @@ export async function POST({ request }) {
 
     if (result.success) {
       // Verify the instance after registration
-      const verification = await federationService.verifyInstance(base_url);
+      const verification = await getFederationService().verifyInstance(base_url);
       
       // Update status based on verification
       const status = verification.healthy && verification.compatible ? 'active' : 'pending';
-      await federationService.updateInstanceStatus(result.instance.id, status);
+      await getFederationService().updateInstanceStatus(result.instance.id, status);
 
       // Return public information only
       const publicInstance = {

@@ -176,16 +176,29 @@
         <div class="form-group">
           <label for="password" class="form-label">Password</label>
           <div class="password-input-wrapper">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              bind:value={password}
-              placeholder="Create a password"
-              class="form-input"
-              class:error={password && !isValidPassword}
-              required
-              autocomplete="new-password"
-            />
+            {#if showPassword}
+              <input
+                id="password"
+                type="text"
+                bind:value={password}
+                placeholder="Create a password"
+                class="form-input"
+                class:error={password && !isValidPassword}
+                required
+                autocomplete="new-password"
+              />
+            {:else}
+              <input
+                id="password"
+                type="password"
+                bind:value={password}
+                placeholder="Create a password"
+                class="form-input"
+                class:error={password && !isValidPassword}
+                required
+                autocomplete="new-password"
+              />
+            {/if}
             <button
               type="button"
               on:click={() => togglePasswordVisibility('password')}
@@ -204,16 +217,29 @@
         <div class="form-group">
           <label for="confirmPassword" class="form-label">Confirm password</label>
           <div class="password-input-wrapper">
-            <input
-              id="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              bind:value={confirmPassword}
-              placeholder="Confirm your password"
-              class="form-input"
-              class:error={confirmPassword && !passwordsMatch}
-              required
-              autocomplete="new-password"
-            />
+            {#if showConfirmPassword}
+              <input
+                id="confirmPassword"
+                type="text"
+                bind:value={confirmPassword}
+                placeholder="Confirm your password"
+                class="form-input"
+                class:error={confirmPassword && !passwordsMatch}
+                required
+                autocomplete="new-password"
+              />
+            {:else}
+              <input
+                id="confirmPassword"
+                type="password"
+                bind:value={confirmPassword}
+                placeholder="Confirm your password"
+                class="form-input"
+                class:error={confirmPassword && !passwordsMatch}
+                required
+                autocomplete="new-password"
+              />
+            {/if}
             <button
               type="button"
               on:click={() => togglePasswordVisibility('confirm')}
