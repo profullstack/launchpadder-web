@@ -4,7 +4,7 @@ services:
   # Supabase Studio - Web UI for database management
   studio:
     container_name: supabase-studio
-    image: supabase/studio:20240101-ce42139
+    image: supabase/studio:20241216-df1b9b7
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/profile', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
@@ -91,7 +91,7 @@ services:
   # GoTrue Auth Service
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:v2.132.3
+    image: supabase/gotrue:v2.158.1
     depends_on:
       db:
         condition: service_healthy
@@ -142,7 +142,7 @@ services:
   # PostgREST API Service
   rest:
     container_name: supabase-rest
-    image: postgrest/postgrest:v11.2.2
+    image: postgrest/postgrest:v12.2.3
     depends_on:
       db:
         condition: service_healthy
@@ -162,7 +162,7 @@ services:
   # Realtime Service
   realtime:
     container_name: supabase-realtime
-    image: supabase/realtime:v2.25.50
+    image: supabase/realtime:v2.30.23
     depends_on:
       db:
         condition: service_healthy
@@ -202,7 +202,7 @@ services:
   # Storage Service
   storage:
     container_name: supabase-storage
-    image: supabase/storage-api:v0.40.4
+    image: supabase/storage-api:v1.11.1
     depends_on:
       db:
         condition: service_healthy
@@ -261,7 +261,7 @@ services:
   # Meta Service
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:v0.68.0
+    image: supabase/postgres-meta:v0.83.2
     depends_on:
       db:
         condition: service_healthy
@@ -279,7 +279,7 @@ services:
   # Functions Service
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:v1.22.4
+    image: supabase/edge-runtime:v1.58.2
     restart: unless-stopped
     depends_on:
       analytics:

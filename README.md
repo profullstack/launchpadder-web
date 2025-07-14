@@ -117,6 +117,41 @@ pnpm run db:migrate
 ./scripts/deploy-docker.sh update
 ```
 
+### 💾 Backup and Restore
+
+**Complete data backup and restore functionality**
+
+```bash
+# Create full backup (database + storage + config)
+./bin/backup-restore.sh backup
+
+# Create backup with custom name
+./bin/backup-restore.sh backup my_backup_name
+
+# List all available backups
+./bin/backup-restore.sh list
+
+# Restore from backup
+./bin/backup-restore.sh restore backups/backup_20240101_120000.tar.gz
+
+# View help and options
+./bin/backup-restore.sh help
+```
+
+**What gets backed up:**
+- PostgreSQL databases (main + Supabase internal)
+- Storage files and uploads
+- Configuration files and volumes
+- Backup metadata and versioning
+
+**Automated backups with cron:**
+```bash
+# Daily backup at 2 AM
+0 2 * * * /path/to/launchpadder-web/bin/backup-restore.sh backup daily_$(date +\%Y\%m\%d)
+```
+
+See [`bin/README.md`](bin/README.md) for detailed backup documentation.
+
 ### ☁️ Option 2: Cloud Setup with Supabase
 
 **Quick setup using Supabase Cloud**
