@@ -206,4 +206,32 @@ supabase/.temp
 # Local development overrides
 docker-compose.override.yml
 
+# Docker volumes and persistent data (should not be in git)
+docker/volumes/
+
+# Supabase Docker volumes - contains database data, logs, storage files
+volumes/db/data/
+volumes/storage/
+
+# Application uploads and user data
+uploads/
+
+# Environment files (security - already covered above but being explicit)
+.env.production
+.env.test
+.env.staging
+
+# Keep configuration files but exclude data directories
+!volumes/api/
+!volumes/logs/
+!volumes/pooler/
+!volumes/functions/
+!volumes/db/
+volumes/db/data/
+volumes/logs/*.log
+volumes/logs/logs/
+
+# Ensure SQL configuration files are kept in db directory
+!volumes/db/*.sql
+
 node_modules

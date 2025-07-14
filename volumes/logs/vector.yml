@@ -1,0 +1,83 @@
+# Vector configuration for Supabase logging
+data_dir: /var/lib/vector
+
+# Sources - collect logs from Docker containers
+sources:
+  docker_logs:
+    type: docker_logs
+    include_images:
+      - "supabase/*"
+      - "launchpadder-web"
+
+  host_metrics:
+    type: host_metrics
+    collectors:
+      - cpu
+      - memory
+      - disk
+      - network
+
+# Transforms - process and enrich logs
+transforms:
+  parse_logs:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      .timestamp = now()
+      .service = .label."com.docker.compose.service" || "unknown"
+      .container_name = .label."com.docker.compose.container-number" || "unknown"
+      
+      # Parse JSON logs if possible
+      if is_string(.message) {
+        parsed = parse_json(.message) ?? {}
+        if is_object(parsed) {
+          .level = parsed.level || "info"
+          .msg = parsed.msg || parsed.message || .message
+          .metadata = parsed
+        } else {
+          .level = "info"
+          .msg = .message
+        }
+      }
+
+  filter_logs:
+    type: filter
+    inputs:
+      - parse_logs
+    condition: |
+      .service != "vector" &&
+      .level != "debug" &&
+      !contains(string!(.msg), "health check")
+
+# Sinks - send logs to destinations
+sinks:
+  console:
+    type: console
+    inputs:
+      - filter_logs
+    encoding:
+      codec: json
+
+  # Store logs in files for persistence
+  file_logs:
+    type: file
+    inputs:
+      - filter_logs
+    path: /var/log/supabase/app-%Y-%m-%d.log
+    encoding:
+      codec: json
+
+  # Send metrics to console
+  metrics_console:
+    type: console
+    inputs:
+      - host_metrics
+    encoding:
+      codec: json
+
+# API configuration
+api:
+  enabled: true
+  address: "0.0.0.0:9001"
+  playground: true

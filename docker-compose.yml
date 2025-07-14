@@ -473,6 +473,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
+        PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     restart: unless-stopped
     depends_on:
       kong:
@@ -488,6 +491,8 @@ services:
       SUPABASE_URL: http://kong:8000
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
+      PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}

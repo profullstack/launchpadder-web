@@ -24,6 +24,13 @@ COPY . .
 # Install pnpm in builder stage
 RUN npm install -g pnpm
 
+# Set build-time environment variables for SvelteKit
+# These are required for PUBLIC_ variables to be available during build
+ARG PUBLIC_SUPABASE_URL
+ARG PUBLIC_SUPABASE_ANON_KEY
+ENV PUBLIC_SUPABASE_URL=$PUBLIC_SUPABASE_URL
+ENV PUBLIC_SUPABASE_ANON_KEY=$PUBLIC_SUPABASE_ANON_KEY
+
 # Build the application
 RUN pnpm run build
 
