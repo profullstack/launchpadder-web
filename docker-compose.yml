@@ -60,7 +60,7 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'cp /home/kong/temp.yml ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
   # PostgreSQL Database
   db:
@@ -68,7 +68,7 @@ services:
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
     volumes:
-      - ./volumes/db/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:Z
+      - ./volumes/db/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:

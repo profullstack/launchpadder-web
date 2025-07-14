@@ -1,20 +1,28 @@
+#!/bin/bash
+set -e
+
+# This script initializes the Supabase database with proper environment variable substitution
+echo "Starting Supabase database initialization..."
+
+# Create the SQL script with environment variable substitution
+cat > /tmp/init-supabase.sql << EOF
 -- Minimal database initialization script for Supabase
 -- This script sets up basic roles and schemas needed for Supabase to function
 
 -- First, ensure the postgres superuser exists with the correct password
-DO $$
+DO \$\$
 BEGIN
     -- Create postgres user if it doesn't exist
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'postgres') THEN
-        CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
+        CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN PASSWORD '${POSTGRES_PASSWORD}';
         RAISE NOTICE 'Created postgres superuser';
     ELSE
         -- Update password for existing postgres user
-        ALTER ROLE postgres WITH PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
+        ALTER ROLE postgres WITH PASSWORD '${POSTGRES_PASSWORD}';
         RAISE NOTICE 'Updated postgres user password';
     END IF;
 END
-$$;
+\$\$;
 
 -- Enable basic extensions that are available in standard PostgreSQL
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -29,7 +37,7 @@ CREATE SCHEMA IF NOT EXISTS _realtime;
 CREATE SCHEMA IF NOT EXISTS supabase_functions;
 
 -- Create essential Supabase roles
-DO $$
+DO \$\$
 BEGIN
     -- Create basic roles if they don't exist
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
@@ -48,7 +56,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticator') THEN
-        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
+        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD '${POSTGRES_PASSWORD}';
         RAISE NOTICE 'Created authenticator role';
     END IF;
     
@@ -57,7 +65,10 @@ BEGIN
         RAISE NOTICE 'Created supabase_admin role';
     END IF;
 END
-$$;
+\$\$;
+
+-- Create the _supabase database for Supavisor connection pooler
+CREATE DATABASE "_supabase" WITH OWNER = postgres;
 
 -- Grant basic roles to postgres
 GRANT anon TO postgres;
@@ -91,15 +102,23 @@ CREATE TABLE IF NOT EXISTS public.supabase_init_status (
 );
 
 -- Mark database as initialized
-INSERT INTO public.supabase_init_status (component, version) 
-VALUES ('database', '1.0.0') 
-ON CONFLICT (component) DO UPDATE SET 
+INSERT INTO public.supabase_init_status (component, version)
+VALUES ('database', '1.0.0')
+ON CONFLICT (component) DO UPDATE SET
     initialized_at = now(),
     version = EXCLUDED.version;
 
 -- Log successful initialization
-DO $$
+DO \$\$
 BEGIN
     RAISE NOTICE 'Basic Supabase database initialization completed successfully';
+    RAISE NOTICE 'Created _supabase database for connection pooler';
 END
-$$;
+\$\$;
+EOF
+
+# Execute the SQL script
+echo "Executing database initialization script..."
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /tmp/init-supabase.sql
+
+echo "Database initialization completed successfully!"
