@@ -67,6 +67,7 @@ services:
     container_name: supabase-db
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./volumes/db/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
@@ -225,6 +226,7 @@ services:
     container_name: supabase-storage
     image: supabase/storage-api:v1.24.7
     restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./volumes/storage:/var/lib/storage:z
     healthcheck:
@@ -267,6 +269,7 @@ services:
     container_name: supabase-imgproxy
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./volumes/storage:/var/lib/storage:z
     healthcheck:
@@ -306,6 +309,7 @@ services:
     container_name: supabase-edge-functions
     image: supabase/edge-runtime:v1.67.4
     restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     depends_on:
