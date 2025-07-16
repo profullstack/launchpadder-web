@@ -51,10 +51,11 @@ docker build \
 Modified Docker Compose services to run with host user UID/GID, preventing volume ownership issues:
 
 **Services Updated:**
-- `db`: PostgreSQL database service
 - `storage`: Supabase storage service
 - `imgproxy`: Image processing service
 - `functions`: Edge functions service
+
+**Note:** The PostgreSQL `db` service runs with its default user for proper database operation, but the volume ownership is managed through the setup script.
 
 **Configuration Added:**
 ```yaml

@@ -67,7 +67,6 @@ services:
     container_name: supabase-db
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
-    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./volumes/db/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
