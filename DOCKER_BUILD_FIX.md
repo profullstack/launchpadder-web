@@ -141,8 +141,55 @@ The fix was verified by:
 2. Testing the build with placeholder environment variables
 3. Ensuring the build process completes without errors
 
+## Production-Specific Fix
+
+### Issue in Production
+The production Docker Compose configuration was missing the required build arguments for Supabase environment variables, causing the same permission error during build.
+
+### Solution Applied
+Updated `docker-compose.production.yml` to include build arguments for both web instances:
+
+```yaml
+services:
+  web-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      args:
+        PUBLIC_SUPABASE_URL: http://kong:8000
+        PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+  web-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      args:
+        PUBLIC_SUPABASE_URL: http://kong:8000
+        PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+```
+
+### Production Build Script
+Created [`bin/fix-production-docker-build.sh`](bin/fix-production-docker-build.sh) to:
+- Check and fix volume permission issues
+- Verify `.dockerignore` configuration
+- Validate required environment variables
+- Test Docker build context loading
+- Provide clear build instructions
+
+### Usage for Production
+```bash
+# Run the fix script first
+./bin/fix-production-docker-build.sh
+
+# Then build production images
+docker-compose -f docker-compose.production.yml build
+
+# Or build and start all services
+docker-compose -f docker-compose.production.yml up -d --build
+```
+
 ## Notes
 
 - The `volumes/db/data` directory should never be included in Docker builds as it contains runtime database files
 - Always provide the required Supabase environment variables when building the Docker image
 - For CI/CD pipelines, ensure these environment variables are securely stored and passed to the build process
+- In production, make sure your `.env.production` file contains all required variables including `ANON_KEY`
