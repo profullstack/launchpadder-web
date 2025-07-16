@@ -218,6 +218,41 @@ services:
           credentials: true
           max_age: 3600
 
+  - name: projects
+    url: http://studio:3000/
+    routes:
+      - name: projects-all
+        strip_path: false
+        paths:
+          - /projects
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Accept-Version
+            - Content-Length
+            - Content-MD5
+            - Content-Type
+            - Date
+            - X-Auth-Token
+            - Authorization
+            - apikey
+            - X-Requested-With
+          exposed_headers:
+            - X-Auth-Token
+          credentials: true
+          max_age: 3600
+
   - name: meta
     url: http://kong:8001/
     routes:
