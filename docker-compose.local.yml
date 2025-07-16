@@ -4,7 +4,7 @@ services:
   # Supabase Studio - Web UI for database management
   studio:
     container_name: supabase-studio
-    image: supabase/studio:20241216-df1b9b7
+    image: supabase/studio:latest
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/profile', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
@@ -13,7 +13,7 @@ services:
       retries: 3
     depends_on:
       analytics:
-        condition: service_healthy
+        condition: service_started
     environment:
       STUDIO_PG_META_URL: http://meta:8080
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -31,7 +31,7 @@ services:
     container_name: supabase-kong
     image: kong:2.8.1
     restart: unless-stopped
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'cp ~/temp.yml ~/kong.yml && /docker-entrypoint.sh kong docker-start'
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
@@ -55,12 +55,11 @@ services:
     image: supabase/postgres:15.1.0.117
     healthcheck:
       test: pg_isready -U postgres -h localhost
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: 10s
+      timeout: 10s
+      retries: 20
     depends_on:
-      vector:
-        condition: service_healthy
+      - vector
     command:
       - postgres
       - -c
@@ -69,7 +68,7 @@ services:
       - log_min_messages=fatal
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT:-5432}:5432
+      - ${POSTGRES_PORT:-5433}:5432
     environment:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: 5432
@@ -96,7 +95,7 @@ services:
       db:
         condition: service_healthy
       analytics:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test:
         [
@@ -147,7 +146,7 @@ services:
       db:
         condition: service_healthy
       analytics:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
@@ -167,7 +166,7 @@ services:
       db:
         condition: service_healthy
       analytics:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test:
         [
@@ -266,7 +265,7 @@ services:
       db:
         condition: service_healthy
       analytics:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     environment:
       PG_META_PORT: 8080
@@ -283,7 +282,7 @@ services:
     restart: unless-stopped
     depends_on:
       analytics:
-        condition: service_healthy
+        condition: service_started
     environment:
       JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://kong:8000
@@ -303,10 +302,10 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.4.0
     healthcheck:
-      test: [ "CMD", "curl", "http://localhost:4000/health" ]
-      timeout: 5s
-      interval: 5s
-      retries: 10
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health" ]
+      timeout: 10s
+      interval: 10s
+      retries: 15
     restart: unless-stopped
     depends_on:
       db:
@@ -320,8 +319,8 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_SCHEMA: _analytics
       LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
-      LOGFLARE_SINGLE_TENANT: true
-      LOGFLARE_SUPABASE_MODE: true
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
       LOGFLARE_MIN_CLUSTER_SIZE: 1
       RELEASE_COOKIE: cookie
 
