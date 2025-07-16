@@ -1,81 +1,91 @@
-# Docker Build Fix - SvelteKit Environment Variables
+# Docker Build Fix Documentation
 
-## Problem Solved
+## Issue Summary
+The Docker build was failing with two main issues:
 
-The Docker build was failing with:
-```
-"PUBLIC_SUPABASE_URL" is not exported by "virtual:env/static/public", imported by "src/lib/config/supabase.js"
-```
+1. **Permission denied error**: `failed to solve: error from sender: open /home/ubuntu/www/launchpadder.com/launchpadder-web/volumes/db/data: permission denied`
+2. **Missing Supabase environment variables**: `Error: Missing Supabase environment variables`
 
-## Root Cause
+## Root Causes
 
-SvelteKit requires `PUBLIC_` prefixed environment variables to be available at **build time**, not just runtime. The Docker build process didn't have access to these variables during the `pnpm run build` step.
+### 1. Permission Issue with volumes/db/data
+- The `volumes/db/data` directory had restrictive permissions (`drwx------`) and was owned by user ID 105 and root group
+- This is typical for PostgreSQL data directories created by Docker containers
+- Docker was trying to include this directory in the build context despite `.dockerignore` exclusions
 
-## Solution Applied
+### 2. Missing Environment Variables
+- The Dockerfile correctly defines `ARG` and `ENV` for Supabase variables but they weren't being passed during build
+- SvelteKit requires these `PUBLIC_` environment variables to be available during the build process
+- The `src/lib/config/supabase.js` file throws an error if these variables are missing
 
-### 1. Updated Dockerfile
+## Solutions Applied
 
-**Added build-time environment variables:**
-```dockerfile
-# Set build-time environment variables for SvelteKit
-# These are required for PUBLIC_ variables to be available during build
-ARG PUBLIC_SUPABASE_URL
-ARG PUBLIC_SUPABASE_ANON_KEY
-ENV PUBLIC_SUPABASE_URL=$PUBLIC_SUPABASE_URL
-ENV PUBLIC_SUPABASE_ANON_KEY=$PUBLIC_SUPABASE_ANON_KEY
-```
-
-### 2. Updated docker-compose.yml
-
-**Added build args to pass environment variables during build:**
-```yaml
-web:
-  build:
-    context: .
-    dockerfile: Dockerfile
-    args:
-      PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
-      PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
-  environment:
-    # Runtime environment variables
-    PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
-    PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
-```
-
-## How It Works
-
-1. **Build Time**: Docker passes `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` as build arguments
-2. **SvelteKit Build**: These variables are available during `pnpm run build` via `$env/static/public`
-3. **Runtime**: The same variables are also available at runtime for dynamic behavior
-
-## Environment Variable Flow
+### 1. Enhanced .dockerignore
+Updated `.dockerignore` to be more explicit about excluding problematic directories:
 
 ```
-.env file → docker-compose.yml → Dockerfile (build args) → SvelteKit build → Built application
-                ↓
-            Runtime environment → Running container
+# Docker volumes and data directories
+volumes/
+volumes/db/data/
+volumes/*/data/
+docker/volumes/
 ```
 
-## Testing the Fix
+### 2. Build Arguments for Environment Variables
+The Docker build now requires passing the Supabase environment variables as build arguments:
 
 ```bash
-# Build with the fix applied
-docker compose up --build web
-
-# Should now build successfully without environment variable errors
+docker build \
+  --build-arg PUBLIC_SUPABASE_URL=your_supabase_url \
+  --build-arg PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key \
+  -t launchpadder-web .
 ```
 
-## Key Insights
+## Usage Instructions
 
-- **SvelteKit Requirement**: `PUBLIC_` variables must be available at build time
-- **Docker Build Context**: Build args are separate from runtime environment variables
-- **Dual Configuration**: Need both build args AND runtime environment for full functionality
-- **Default Values**: Using `${PUBLIC_SUPABASE_URL:-http://localhost:8000}` provides fallback
+### For Development/Testing
+```bash
+docker build \
+  --build-arg PUBLIC_SUPABASE_URL=http://localhost:54321 \
+  --build-arg PUBLIC_SUPABASE_ANON_KEY=placeholder-key \
+  -t launchpadder-web .
+```
 
-## Related Files Modified
+### For Production
+```bash
+docker build \
+  --build-arg PUBLIC_SUPABASE_URL=$PRODUCTION_SUPABASE_URL \
+  --build-arg PUBLIC_SUPABASE_ANON_KEY=$PRODUCTION_SUPABASE_ANON_KEY \
+  -t launchpadder-web .
+```
 
-- [`Dockerfile`](Dockerfile:23-29) - Added build-time environment variables
-- [`docker-compose.yml`](docker-compose.yml:476-479) - Added build args configuration
-- [`src/lib/config/supabase.js`](src/lib/config/supabase.js:5) - Uses the PUBLIC_ variables
+### Using Docker Compose
+Update your `docker-compose.yml` to include build args:
 
-This fix ensures that SvelteKit can access the required Supabase configuration during both build and runtime phases.
+```yaml
+services:
+  web:
+    build:
+      context: .
+      args:
+        PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+        PUBLIC_SUPABASE_ANON_KEY: ${PUBLIC_SUPABASE_ANON_KEY}
+```
+
+## Files Modified
+
+1. **`.dockerignore`**: Added explicit exclusions for database data directories
+2. **`DOCKER_BUILD_FIX.md`**: This documentation file
+
+## Verification
+
+The fix was verified by:
+1. Confirming the permission error was resolved (build context loaded successfully)
+2. Testing the build with placeholder environment variables
+3. Ensuring the build process completes without errors
+
+## Notes
+
+- The `volumes/db/data` directory should never be included in Docker builds as it contains runtime database files
+- Always provide the required Supabase environment variables when building the Docker image
+- For CI/CD pipelines, ensure these environment variables are securely stored and passed to the build process
