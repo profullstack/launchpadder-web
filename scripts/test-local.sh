@@ -39,7 +39,7 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! docker info &> /dev/null; then
+    if ! sudo docker info &> /dev/null; then
         log_error "Docker is not running. Please start Docker first."
         exit 1
     fi
@@ -81,31 +81,123 @@ setup_environment() {
 start_supabase() {
     log_info "Starting Supabase services..."
     
-    # Use docker-compose.local.yml for local testing
-    if command -v docker-compose &> /dev/null; then
-        COMPOSE_CMD="docker-compose"
-    else
+    # Use docker-compose.local.yml for local testing - prefer newer docker compose
+    if docker compose version &> /dev/null; then
         COMPOSE_CMD="docker compose"
+    else
+        COMPOSE_CMD="docker-compose"
     fi
     
-    # Load environment variables
-    export $(grep -v '^#' .env.local | xargs)
+    # Clear potentially problematic Docker environment variables
+    unset DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
     
-    # Start Supabase services (without the web app)
-    $COMPOSE_CMD -f docker-compose.local.yml up -d studio kong db auth rest realtime storage imgproxy meta functions analytics vector
+    # Load environment variables
+    set -a
+    source .env.local
+    set +a
+    
+    # Debug: Check if variables are loaded
+    echo "DEBUG: POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+    echo "DEBUG: SUPABASE_URL=$SUPABASE_URL"
+    echo "DEBUG: JWT_SECRET=$JWT_SECRET"
+    
+    # Start database first to check if it can start
+    log_info "Starting database container first..."
+    sudo DOCKER_HOST=unix:///var/run/docker.sock \
+         POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+         SUPABASE_URL="$SUPABASE_URL" \
+         SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+         SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+         POSTGRES_DB="$POSTGRES_DB" \
+         JWT_SECRET="$JWT_SECRET" \
+         API_EXTERNAL_URL="$API_EXTERNAL_URL" \
+         SITE_URL="$SITE_URL" \
+         LOGFLARE_API_KEY="$LOGFLARE_API_KEY" \
+         ADDITIONAL_REDIRECT_URLS="$ADDITIONAL_REDIRECT_URLS" \
+         SMTP_ADMIN_EMAIL="$SMTP_ADMIN_EMAIL" \
+         SMTP_HOST="$SMTP_HOST" \
+         SMTP_PORT="$SMTP_PORT" \
+         SMTP_USER="$SMTP_USER" \
+         SMTP_PASS="$SMTP_PASS" \
+         SMTP_SENDER_NAME="$SMTP_SENDER_NAME" \
+         $COMPOSE_CMD -f docker-compose.local.yml up -d db || {
+             log_error "Database failed to start. Checking container status..."
+             sudo DOCKER_HOST=unix:///var/run/docker.sock docker ps -a | grep supabase-db
+             log_info "Container logs:"
+             sudo DOCKER_HOST=unix:///var/run/docker.sock docker logs supabase-db 2>&1 | tail -30
+             exit 1
+         }
+    
+    # Wait for database to be ready
+    log_info "Waiting for database to be ready..."
+    sleep 45
+    
+    # Start core services first
+    log_info "Starting core services..."
+    sudo DOCKER_HOST=unix:///var/run/docker.sock \
+         POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+         SUPABASE_URL="$SUPABASE_URL" \
+         SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+         SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+         POSTGRES_DB="$POSTGRES_DB" \
+         JWT_SECRET="$JWT_SECRET" \
+         API_EXTERNAL_URL="$API_EXTERNAL_URL" \
+         SITE_URL="$SITE_URL" \
+         LOGFLARE_API_KEY="$LOGFLARE_API_KEY" \
+         ADDITIONAL_REDIRECT_URLS="$ADDITIONAL_REDIRECT_URLS" \
+         SMTP_ADMIN_EMAIL="$SMTP_ADMIN_EMAIL" \
+         SMTP_HOST="$SMTP_HOST" \
+         SMTP_PORT="$SMTP_PORT" \
+         SMTP_USER="$SMTP_USER" \
+         SMTP_PASS="$SMTP_PASS" \
+         SMTP_SENDER_NAME="$SMTP_SENDER_NAME" \
+         $COMPOSE_CMD -f docker-compose.local.yml up -d vector imgproxy analytics
+    
+    # Wait for core services
+    log_info "Waiting for core services..."
+    sleep 30
+    
+    # Start remaining services
+    log_info "Starting remaining services..."
+    sudo DOCKER_HOST=unix:///var/run/docker.sock \
+         POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+         SUPABASE_URL="$SUPABASE_URL" \
+         SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+         SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+         POSTGRES_DB="$POSTGRES_DB" \
+         JWT_SECRET="$JWT_SECRET" \
+         API_EXTERNAL_URL="$API_EXTERNAL_URL" \
+         SITE_URL="$SITE_URL" \
+         LOGFLARE_API_KEY="$LOGFLARE_API_KEY" \
+         ADDITIONAL_REDIRECT_URLS="$ADDITIONAL_REDIRECT_URLS" \
+         SMTP_ADMIN_EMAIL="$SMTP_ADMIN_EMAIL" \
+         SMTP_HOST="$SMTP_HOST" \
+         SMTP_PORT="$SMTP_PORT" \
+         SMTP_USER="$SMTP_USER" \
+         SMTP_PASS="$SMTP_PASS" \
+         SMTP_SENDER_NAME="$SMTP_SENDER_NAME" \
+         $COMPOSE_CMD -f docker-compose.local.yml up -d kong auth rest realtime storage meta functions studio
     
     # Wait for services to be healthy
     log_info "Waiting for services to be ready..."
-    sleep 30
+    sleep 90
+    
+    # Check service status first
+    log_info "Checking service status..."
+    sudo docker ps --format "table {{.Names}}\t{{.Status}}"
     
     # Check if Kong is responding
     local retries=0
     local max_retries=30
     
     while [[ $retries -lt $max_retries ]]; do
-        if curl -f http://localhost:8000/health &> /dev/null; then
+        log_info "Testing Kong connection..."
+        if curl -f http://localhost:8000/ &> /dev/null; then
             log_success "Supabase services are ready"
             return 0
+        else
+            log_info "Kong not ready yet, checking logs..."
+            sudo docker logs supabase-kong | tail -5
         fi
         
         log_info "Waiting for services... ($((retries + 1))/$max_retries)"
@@ -114,7 +206,7 @@ start_supabase() {
     done
     
     log_error "Services failed to start properly"
-    $COMPOSE_CMD -f docker-compose.local.yml logs
+    sudo -E env DOCKER_HOST=unix:///var/run/docker.sock $COMPOSE_CMD -f docker-compose.local.yml logs
     exit 1
 }
 
@@ -131,7 +223,7 @@ run_migrations() {
         for migration in supabase/migrations/*.sql; do
             if [[ -f "$migration" ]]; then
                 log_info "Applying migration: $(basename "$migration")"
-                docker exec supabase-db psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$(basename "$migration")" || true
+                sudo docker exec -i supabase-db psql -U postgres -d postgres < "$migration" || true
             fi
         done
     fi
@@ -208,7 +300,7 @@ health_check() {
     fi
     
     # Check Kong API Gateway
-    if curl -f http://localhost:8000/health &> /dev/null; then
+    if curl -f http://localhost:8000/ &> /dev/null; then
         log_success "✅ Kong API Gateway is accessible at http://localhost:8000"
     else
         log_error "❌ Kong API Gateway is not accessible"
@@ -222,7 +314,7 @@ health_check() {
     fi
     
     # Check Database
-    if docker exec supabase-db pg_isready -U postgres &> /dev/null; then
+    if sudo docker exec supabase-db pg_isready -U postgres &> /dev/null; then
         log_success "✅ PostgreSQL Database is ready"
     else
         log_error "❌ PostgreSQL Database is not ready"
@@ -242,8 +334,8 @@ display_info() {
     echo "  🗄️  PostgreSQL:        localhost:5432"
     echo ""
     echo "🔧 Useful Commands:"
-    echo "  View logs:             docker-compose -f docker-compose.local.yml logs -f"
-    echo "  Stop services:         docker-compose -f docker-compose.local.yml down"
+    echo "  View logs:             sudo docker-compose -f docker-compose.local.yml logs -f"
+    echo "  Stop services:         sudo docker-compose -f docker-compose.local.yml down"
     echo "  Restart web app:       kill $WEB_PID && pnpm run preview --port 3000 &"
     echo "  Run tests:             pnpm run test"
     echo ""
@@ -262,11 +354,35 @@ cleanup() {
         kill $WEB_PID 2>/dev/null || true
     fi
     
-    # Stop Docker services
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f docker-compose.local.yml down
+    # Stop Docker services (only if Docker is running)
+    if sudo docker info &> /dev/null; then
+        if docker compose version &> /dev/null; then
+            sudo DOCKER_HOST=unix:///var/run/docker.sock \
+                 POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+                 SUPABASE_URL="$SUPABASE_URL" \
+                 SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+                 SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+                 POSTGRES_DB="$POSTGRES_DB" \
+                 JWT_SECRET="$JWT_SECRET" \
+                 API_EXTERNAL_URL="$API_EXTERNAL_URL" \
+                 SITE_URL="$SITE_URL" \
+                 LOGFLARE_API_KEY="$LOGFLARE_API_KEY" \
+                 docker compose -f docker-compose.local.yml down
+        else
+            sudo DOCKER_HOST=unix:///var/run/docker.sock \
+                 POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+                 SUPABASE_URL="$SUPABASE_URL" \
+                 SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+                 SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+                 POSTGRES_DB="$POSTGRES_DB" \
+                 JWT_SECRET="$JWT_SECRET" \
+                 API_EXTERNAL_URL="$API_EXTERNAL_URL" \
+                 SITE_URL="$SITE_URL" \
+                 LOGFLARE_API_KEY="$LOGFLARE_API_KEY" \
+                 docker-compose -f docker-compose.local.yml down
+        fi
     else
-        docker compose -f docker-compose.local.yml down
+        log_warning "Docker is not running, skipping service cleanup"
     fi
     
     log_success "Cleanup completed"
