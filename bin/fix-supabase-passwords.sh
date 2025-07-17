@@ -41,7 +41,12 @@ wait_for_db() {
     log_info "Waiting for database to be ready..."
     local max_attempts=30
     local attempt=1
-    
+    # print db credentials
+    echo "DB_HOST: $DB_HOST"
+    echo "DB_PORT: $DB_PORT"
+    echo "DB_NAME: $DB_NAME"
+    echo "DB_USER: $DB_USER"
+    echo "DB_PASSWORD: $DB_PASSWORD"
     while [ $attempt -le $max_attempts ]; do
         if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
             log_success "Database is ready!"

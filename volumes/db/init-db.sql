@@ -1,20 +1,7 @@
 -- Minimal database initialization script for Supabase
 -- This script sets up basic roles and schemas needed for Supabase to function
 
--- First, ensure the postgres superuser exists with the correct password
-DO $$
-BEGIN
-    -- Create postgres user if it doesn't exist
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'postgres') THEN
-        CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
-        RAISE NOTICE 'Created postgres superuser';
-    ELSE
-        -- Update password for existing postgres user
-        ALTER ROLE postgres WITH PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
-        RAISE NOTICE 'Updated postgres user password';
-    END IF;
-END
-$$;
+-- Basic Supabase setup (postgres user is created by Docker automatically)
 
 -- Enable basic extensions that are available in standard PostgreSQL
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -27,6 +14,8 @@ CREATE SCHEMA IF NOT EXISTS realtime;
 CREATE SCHEMA IF NOT EXISTS _analytics;
 CREATE SCHEMA IF NOT EXISTS _realtime;
 CREATE SCHEMA IF NOT EXISTS supabase_functions;
+
+-- Note: _supabase database will be created separately if needed
 
 -- Create essential Supabase roles
 DO $$
@@ -48,7 +37,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticator') THEN
-        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your_super_secret_jwt_token_with_at_least_32_characters_long';
+        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'supabase123';
         RAISE NOTICE 'Created authenticator role';
     END IF;
     

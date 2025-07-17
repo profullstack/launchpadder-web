@@ -27,6 +27,8 @@ if (!globalThis.fetch) {
   globalThis.Headers = Headers;
 }
 
+// SvelteKit modules are mocked using the custom loader in test/mocks/sveltekit-loader.js
+
 // Setup test database connection
 process.env.NODE_ENV = 'test';
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';

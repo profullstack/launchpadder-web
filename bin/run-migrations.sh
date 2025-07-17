@@ -7,10 +7,10 @@ set -euo pipefail
 
 # Configuration
 DB_HOST="${POSTGRES_HOST:-localhost}"
-DB_PORT="${POSTGRES_PORT:-5433}"
+DB_PORT="${POSTGRES_PORT:-5432}"
 DB_NAME="${POSTGRES_DB:-postgres}"
 DB_USER="${POSTGRES_USER:-postgres}"
-DB_PASSWORD="${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}"
+DB_PASSWORD="${POSTGRES_PASSWORD:-1234}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -41,8 +41,14 @@ wait_for_db() {
     log_info "Waiting for database to be ready..."
     local max_attempts=30
     local attempt=1
-    
+    log_info "DB_HOST: $DB_HOST"
+    log_info "DB_PORT: $DB_PORT"
+    log_info "DB_NAME: $DB_NAME"
+    log_info "DB_USER: $DB_USER"
+    log_info "DB_PASSWORD: $DB_PASSWORD"
     while [ $attempt -le $max_attempts ]; do
+        log_info "Attempt $attempt/$max_attempts: Checking database connection..."
+        log_info "PGPASSWORD: $DB_PASSWORD"
         if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
             log_success "Database is ready!"
             return 0

@@ -68,7 +68,7 @@ services:
       - log_min_messages=fatal
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT:-5433}:5432
+      - ${POSTGRES_PORT:-5432}:5432
     environment:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: 5432
