@@ -10,7 +10,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "mocha test/**/*.test.js --recursive",
+    "test": "NODE_OPTIONS='--experimental-loader ./test/mocks/sveltekit-loader.js' mocha test/**/*.test.js --recursive",
     "test:watch": "mocha test/**/*.test.js --recursive --watch",
     "test:coverage": "c8 mocha test/**/*.test.js --recursive",
     "test:integration": "mocha --config .mocharc.integration.json",
