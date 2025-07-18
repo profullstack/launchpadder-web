@@ -449,25 +449,32 @@ services:
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
 
-  # Database Migration Service
+  # Database Migration Service with Supabase CLI
   migrations:
     container_name: supabase-migrations
-    image: postgres:15-alpine
+    image: node:20-alpine
     restart: "no"
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./bin/run-migrations.sh:/usr/local/bin/run-migrations.sh:ro,z
-      - ./volumes/db:/volumes/db:ro,z
-      - ./supabase/migrations:/supabase/migrations:ro,z
+      - ./supabase:/app/supabase:ro,z
+      - ./bin/run-supabase-migrations.sh:/usr/local/bin/run-supabase-migrations.sh:ro,z
     environment:
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD:-supabase123}@db:5432/${POSTGRES_DB:-postgres}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    command: ["/usr/local/bin/run-migrations.sh"]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supabase123}
+    working_dir: /app
+    command: >
+      sh -c "
+        apk add --no-cache postgresql-client curl bash &&
+        curl -fsSL https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz | tar -xz -C /usr/local/bin &&
+        chmod +x /usr/local/bin/supabase &&
+        /usr/local/bin/run-supabase-migrations.sh
+      "
 
   # Initialization Service - Runs setup scripts automatically
   init:
