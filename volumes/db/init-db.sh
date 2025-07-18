@@ -33,16 +33,28 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         END IF;
         
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticator') THEN
-            CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD '$POSTGRES_PASSWORD';
+            CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD '${POSTGRES_PASSWORD}';
         END IF;
         
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
             CREATE ROLE supabase_admin NOINHERIT CREATEROLE CREATEDB REPLICATION BYPASSRLS;
         END IF;
         
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+            CREATE ROLE supabase_auth_admin NOINHERIT CREATEROLE LOGIN PASSWORD '${POSTGRES_PASSWORD}';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+            CREATE ROLE supabase_storage_admin NOINHERIT CREATEROLE LOGIN PASSWORD '${POSTGRES_PASSWORD}';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_realtime_admin') THEN
+            CREATE ROLE supabase_realtime_admin NOINHERIT CREATEROLE LOGIN PASSWORD '${POSTGRES_PASSWORD}';
+        END IF;
+        
         -- Create launch user if it doesn't exist (for migrations)
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'launch') THEN
-            CREATE ROLE launch WITH LOGIN PASSWORD '$POSTGRES_PASSWORD' SUPERUSER;
+            CREATE ROLE launch WITH LOGIN PASSWORD '${POSTGRES_PASSWORD}' SUPERUSER;
         END IF;
     END
     \$\$;
@@ -52,6 +64,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT authenticated TO postgres;
     GRANT service_role TO postgres;
     GRANT supabase_admin TO postgres;
+    GRANT supabase_auth_admin TO postgres;
+    GRANT supabase_storage_admin TO postgres;
+    GRANT supabase_realtime_admin TO postgres;
     GRANT authenticator TO postgres;
     GRANT launch TO postgres;
     

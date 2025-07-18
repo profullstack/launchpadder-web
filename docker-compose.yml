@@ -33,6 +33,8 @@ services:
       LOGFLARE_URL: http://analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: "true"
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+      POSTGRES_INITDB_ARGS: "--auth-host=trust --auth-local=trust"
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - ${STUDIO_PORT:-3001}:3000
 
