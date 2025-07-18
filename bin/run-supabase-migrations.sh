@@ -84,9 +84,22 @@ init_supabase_project() {
     return 0
 }
 
-# Start Supabase services
-start_supabase_services() {
-    log_info "Starting Supabase services..."
+# Check if we're in a containerized environment with existing Supabase services
+check_containerized_environment() {
+    log_info "Checking if running in containerized environment..."
+    
+    # Check if we're in a Docker container
+    if [ -f /.dockerenv ] || grep -q 'docker\|lxc' /proc/1/cgroup 2>/dev/null; then
+        log_info "Detected containerized environment"
+        
+        # In containerized environment, services should already be running
+        # Skip supabase start and proceed with migrations
+        log_info "Skipping 'supabase start' in containerized environment"
+        return 0
+    fi
+    
+    # Not in container, try to start Supabase services
+    log_info "Not in containerized environment, attempting to start Supabase services..."
     
     # Check if Supabase is already running
     if supabase status 2>/dev/null | grep -q "API URL"; then
@@ -212,9 +225,9 @@ main() {
         exit 1
     fi
     
-    # Start Supabase services
-    if ! start_supabase_services; then
-        log_error "Failed to start Supabase services"
+    # Check environment and start services if needed
+    if ! check_containerized_environment; then
+        log_error "Failed to initialize Supabase environment"
         exit 1
     fi
     
