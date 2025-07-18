@@ -125,17 +125,8 @@ start_services() {
         log_warning "Services may not be fully healthy, but continuing..."
     fi
     
-    # Run migrations
-    log_info "Running database migrations..."
-    if docker-compose up migrations; then
-        log_success "Database migrations completed"
-    else
-        log_error "Database migrations failed"
-        return 1
-    fi
-    
-    # Start the application
-    log_info "Starting the application..."
+    # Start the application (which will run migrations first via entrypoint)
+    log_info "Starting the application with integrated migrations..."
     if docker-compose up -d app; then
         log_success "Application started successfully"
     else

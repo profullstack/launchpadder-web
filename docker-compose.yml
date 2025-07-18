@@ -526,36 +526,7 @@ services:
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
 
-  # Migration service - runs Supabase CLI migrations
-  migrations:
-    container_name: supabase-migrations
-    build:
-      context: .
-      dockerfile: docker/migrations/Dockerfile
-    restart: "no"
-    depends_on:
-      db:
-        condition: service_healthy
-      auth:
-        condition: service_healthy
-      rest:
-        condition: service_healthy
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-    volumes:
-      - ./supabase:/app/supabase:ro
-      - ./bin:/app/bin:ro
-    command: ["/app/bin/run-supabase-migrations.sh"]
-
-  # SvelteKit application
+  # SvelteKit application with integrated migrations
   app:
     container_name: launchpadder-app
     build:
@@ -571,8 +542,8 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
-      migrations:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
       kong:
         condition: service_started
       auth:
@@ -587,6 +558,14 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # Database connection for server-side operations
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      # Migration environment variables
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      SUPABASE_URL: http://kong:8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s

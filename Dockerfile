@@ -60,6 +60,9 @@ COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN npm install -g pnpm
 RUN pnpm install --prod --frozen-lockfile
 
+# Install Supabase CLI for migrations
+RUN pnpm add supabase --save-dev --allow-build=supabase
+
 # Copy database migrations
 COPY --from=builder /app/supabase ./supabase
 
@@ -74,5 +77,9 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the application
-CMD ["node", "build"]
+# Copy and make entrypoint script executable
+COPY bin/docker-entrypoint.sh /app/bin/docker-entrypoint.sh
+RUN chmod +x /app/bin/docker-entrypoint.sh
+
+# Start the application with entrypoint script
+CMD ["/app/bin/docker-entrypoint.sh"]
