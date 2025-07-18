@@ -39,6 +39,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
             CREATE ROLE supabase_admin NOINHERIT CREATEROLE CREATEDB REPLICATION BYPASSRLS;
         END IF;
+        
+        -- Create launch user if it doesn't exist (for migrations)
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'launch') THEN
+            CREATE ROLE launch WITH LOGIN PASSWORD '$POSTGRES_PASSWORD' SUPERUSER;
+        END IF;
     END
     \$\$;
 
@@ -48,16 +53,17 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT service_role TO postgres;
     GRANT supabase_admin TO postgres;
     GRANT authenticator TO postgres;
+    GRANT launch TO postgres;
     
     GRANT anon TO authenticator;
     GRANT authenticated TO authenticator;
     GRANT service_role TO authenticator;
 
     -- Basic permissions
-    GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-    GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
-    GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
-    GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role;
+    GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, launch;
+    GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role, launch;
+    GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role, launch;
+    GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role, launch;
 EOSQL
 
 # Create the _supabase database separately (cannot be done inside a transaction)
