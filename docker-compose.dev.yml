@@ -5,8 +5,17 @@ services:
   app:
     build:
       dockerfile: Dockerfile.dev
+      args:
+        PUBLIC_SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
+        PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        USER_ID: ${USER_ID:-1001}
+        GROUP_ID: ${GROUP_ID:-1001}
+        USERNAME: ${USERNAME:-appuser}
     environment:
       NODE_ENV: development
+      PORT: ${APP_PORT:-3000}
+      PUBLIC_SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
+      PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     develop:
       watch:
         - action: sync

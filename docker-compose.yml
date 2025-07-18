@@ -533,14 +533,14 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       args:
-        PUBLIC_SUPABASE_URL: http://localhost:${KONG_HTTP_PORT}
+        PUBLIC_SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
         PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         USER_ID: ${USER_ID:-1001}
         GROUP_ID: ${GROUP_ID:-1001}
         USERNAME: ${USERNAME:-appuser}
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
     volumes:
       - ./src:/app/src:ro
       - ./static:/app/static:ro
@@ -559,8 +559,8 @@ services:
         condition: service_started
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${PORT:-3000}
-      PUBLIC_SUPABASE_URL: http://localhost:${KONG_HTTP_PORT}
+      PORT: ${APP_PORT:-3000}
+      PUBLIC_SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
       PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # Database connection for server-side operations
@@ -572,9 +572,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      SUPABASE_URL: http://kong:8000
+      SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-3000}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

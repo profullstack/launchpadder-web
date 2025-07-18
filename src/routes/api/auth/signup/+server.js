@@ -10,7 +10,9 @@ const authService = new AuthService({ supabase });
  */
 export async function POST({ request }) {
   try {
+    console.log('Signup endpoint called');
     const { email, password, username, full_name } = await request.json();
+    console.log('Request data:', { email, username, full_name });
 
     // Validate required fields
     if (!email || !password || !username) {
@@ -20,17 +22,21 @@ export async function POST({ request }) {
       );
     }
 
+    console.log('About to check username availability');
+
     // Check if username is available
     const isUsernameAvailable = await authService.isUsernameAvailable(username);
     console.log(`Username availability check for "${username}":`, isUsernameAvailable);
     
     if (!isUsernameAvailable) {
+      console.log('Username not available, returning error');
       return json(
         { error: 'Username is already taken' },
         { status: 400 }
       );
     }
 
+    console.log('Username available, attempting to create account');
     // Attempt to create account
     const result = await authService.signUp({
       email,
@@ -38,6 +44,8 @@ export async function POST({ request }) {
       username,
       full_name
     });
+    
+    console.log('Account creation result:', result ? 'success' : 'failed');
 
     return json({
       user: {
@@ -51,7 +59,11 @@ export async function POST({ request }) {
     });
 
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Signup error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
     // Return appropriate error message
     if (error.message.includes('User already registered')) {
@@ -89,6 +101,9 @@ export async function POST({ request }) {
       );
     }
 
+    // Log the full error for debugging
+    console.error('Unhandled signup error:', error);
+    
     return json(
       { error: 'An error occurred during registration. Please try again.' },
       { status: 500 }

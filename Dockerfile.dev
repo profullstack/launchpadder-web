@@ -38,11 +38,10 @@ RUN chmod +x /app/bin/docker-entrypoint.sh
 
 USER ${USERNAME}
 
-EXPOSE 3000
+EXPOSE ${APP_PORT:-3000}
 
 ENV NODE_ENV=development
-ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Start in development mode with hot reloading
-CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "pnpm run dev --host 0.0.0.0 --port ${PORT:-3000}"]

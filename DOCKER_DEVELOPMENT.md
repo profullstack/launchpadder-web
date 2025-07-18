@@ -95,13 +95,26 @@ USER_ID=1001
 GROUP_ID=1001
 USERNAME=appuser
 
-# Development port
-PORT=3000
+# Application ports
+APP_PORT=3000              # SvelteKit app port
+KONG_HTTP_PORT=8000        # Supabase API gateway port
 
 # Supabase configuration
-KONG_HTTP_PORT=54321
-# ... other Supabase variables
+POSTGRES_PORT=5432
+STUDIO_PORT=3000
+# ... other Supabase variables from .env file
 ```
+
+### Port Configuration
+
+The Docker setup now uses environment variables for all ports:
+
+- **`APP_PORT`**: SvelteKit application port (default: 3000)
+- **`KONG_HTTP_PORT`**: Supabase Kong API gateway port (default: 8000)
+- **`POSTGRES_PORT`**: PostgreSQL database port (default: 5432)
+- **`STUDIO_PORT`**: Supabase Studio dashboard port (default: 3000)
+
+You can customize these ports by modifying your `.env` file.
 
 ### Performance Tips
 
