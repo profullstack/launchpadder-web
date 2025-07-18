@@ -63,12 +63,16 @@ RUN pnpm install --prod --frozen-lockfile
 # Install Supabase CLI for migrations
 RUN pnpm add supabase --save-dev --allow-build=supabase
 
-# Copy database migrations
+# Copy database migrations and scripts
 COPY --from=builder /app/supabase ./supabase
+COPY --from=builder /app/bin ./bin
 
 # Create uploads and logs directories
 RUN mkdir -p /app/uploads /app/logs
 RUN chown ${USERNAME}:${USERNAME} /app/uploads /app/logs
+
+# Make entrypoint script executable
+RUN chmod +x /app/bin/docker-entrypoint.sh
 
 USER ${USERNAME}
 
@@ -76,10 +80,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Copy and make entrypoint script executable
-COPY bin/docker-entrypoint.sh /app/bin/docker-entrypoint.sh
-RUN chmod +x /app/bin/docker-entrypoint.sh
 
 # Start the application with entrypoint script
 CMD ["/app/bin/docker-entrypoint.sh"]
