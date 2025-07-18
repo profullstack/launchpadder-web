@@ -31,8 +31,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
-            CREATE ROLE supabase_admin NOINHERIT CREATEROLE CREATEDB REPLICATION BYPASSRLS;
-            RAISE NOTICE 'Created supabase_admin role';
+            CREATE ROLE supabase_admin NOINHERIT CREATEROLE CREATEDB REPLICATION BYPASSRLS LOGIN PASSWORD '${POSTGRES_PASSWORD}';
+            RAISE NOTICE 'Created supabase_admin role with password';
         ELSE
             RAISE NOTICE 'supabase_admin role already exists';
         END IF;
