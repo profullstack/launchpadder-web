@@ -469,6 +469,25 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     command: ["/usr/local/bin/run-migrations.sh"]
 
+  # Initialization Service - Runs setup scripts automatically
+  init:
+    container_name: launchpadder-init
+    image: alpine:3.18
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts/docker-init.sh:/usr/local/bin/docker-init.sh:ro,z
+      - ./volumes:/app/volumes:z
+    environment:
+      DOCKER_UID: ${DOCKER_UID:-1000}
+      DOCKER_GID: ${DOCKER_GID:-1000}
+      DOCKER_USERNAME: ${DOCKER_USERNAME:-appuser}
+    command: ["/bin/sh", "/usr/local/bin/docker-init.sh"]
+
   # LaunchPadder Web Application
   web:
     container_name: launchpadder-web
@@ -488,6 +507,8 @@ services:
       db:
         condition: service_healthy
       migrations:
+        condition: service_completed_successfully
+      init:
         condition: service_completed_successfully
     ports:
       - ${WEB_PORT:-3000}:3000
