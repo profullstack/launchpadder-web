@@ -84,6 +84,31 @@ init_supabase_project() {
     return 0
 }
 
+# Start Supabase services
+start_supabase_services() {
+    log_info "Starting Supabase services..."
+    
+    # Check if Supabase is already running
+    if supabase status 2>/dev/null | grep -q "API URL"; then
+        log_info "Supabase services are already running"
+        return 0
+    fi
+    
+    # Start Supabase services
+    if supabase start; then
+        log_success "Supabase services started successfully"
+        
+        # Wait a moment for services to fully initialize
+        log_info "Waiting for services to initialize..."
+        sleep 5
+        
+        return 0
+    else
+        log_error "Failed to start Supabase services"
+        return 1
+    fi
+}
+
 # Run database migrations using Supabase CLI
 run_supabase_migrations() {
     log_info "Running Supabase migrations..."
@@ -184,6 +209,12 @@ main() {
     
     if ! init_supabase_project; then
         log_error "Supabase project initialization failed"
+        exit 1
+    fi
+    
+    # Start Supabase services
+    if ! start_supabase_services; then
+        log_error "Failed to start Supabase services"
         exit 1
     fi
     
