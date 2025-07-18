@@ -476,6 +476,9 @@ services:
       args:
         PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
         PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        USER_ID: ${DOCKER_UID:-1001}
+        GROUP_ID: ${DOCKER_GID:-1001}
+        USERNAME: ${DOCKER_USERNAME:-appuser}
     restart: unless-stopped
     depends_on:
       kong:
