@@ -43,10 +43,17 @@ SUPPORTED_LOCALES.forEach((localeCode) => {
  * @param {string} initialLocale - The initial locale to use
  */
 export function initI18n(initialLocale = DEFAULT_LOCALE) {
+  const validLocale = validateLocale(initialLocale);
+  
   init({
     fallbackLocale: DEFAULT_LOCALE,
-    initialLocale: validateLocale(initialLocale)
+    initialLocale: validLocale
   });
+  
+  // For server-side rendering, we need to set the locale immediately
+  if (!browser) {
+    locale.set(validLocale);
+  }
 }
 
 /**

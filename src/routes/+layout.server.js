@@ -1,4 +1,4 @@
-import { detectLocaleFromPath, validateLocale, DEFAULT_LOCALE } from '$lib/i18n/index.js';
+import { detectLocaleFromPath, validateLocale, DEFAULT_LOCALE, initI18n } from '$lib/i18n/index.js';
 
 /**
  * Load function for the root layout (server-side)
@@ -14,6 +14,9 @@ export async function load({ url, locals }) {
   
   // Validate the locale
   const locale = validateLocale(serverLocale);
+  
+  // Initialize i18n system on the server side
+  initI18n(locale);
   
   // Detect if we're on a localized route
   const detectedLocale = detectLocaleFromPath(url.pathname);

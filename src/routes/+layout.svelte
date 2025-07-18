@@ -18,10 +18,12 @@
   let loading = true;
   let mobileMenuOpen = false;
 
-  // Initialize i18n system
-  $: if (browser && data?.locale) {
+  // Initialize i18n system for both server and client
+  $: if (data?.locale) {
     initI18n(data.locale);
-    setLocale(data.locale);
+    if (browser) {
+      setLocale(data.locale);
+    }
   }
 
   // Update document direction when locale changes

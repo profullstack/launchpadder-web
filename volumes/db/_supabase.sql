@@ -1,2 +1,3 @@
--- Create _supabase database for internal Supabase data
-CREATE DATABASE _supabase;
+\set pguser `echo "$POSTGRES_USER"`
+
+CREATE DATABASE _supabase WITH OWNER :pguser;

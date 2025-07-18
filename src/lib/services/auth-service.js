@@ -52,10 +52,9 @@ export class AuthService {
           const { data: profileData, error: profileError } = await this.supabase
             .from('profiles')
             .insert({
-              user_id: authData.user.id,
+              id: authData.user.id,
               username,
-              full_name: full_name || null,
-              email
+              full_name: full_name || null
             })
             .select()
             .single();
@@ -182,7 +181,7 @@ export class AuthService {
       const { data, error } = await this.supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (error) {
@@ -224,7 +223,7 @@ export class AuthService {
           ...profileData,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId)
+        .eq('id', userId)
         .select()
         .single();
 
@@ -424,8 +423,10 @@ export class AuthService {
    */
   async isUsernameAvailable(username) {
     try {
+      // First validate the username format and reserved names
       this.validateUsername(username);
 
+      // Then check if it exists in the database
       const { data, error } = await this.supabase
         .from('profiles')
         .select('username')
@@ -442,10 +443,13 @@ export class AuthService {
         return true;
       }
 
-      // For other errors, assume username is not available for safety
+      // For other database errors, log them and assume username is not available for safety
+      console.error('Database error checking username availability:', error);
       return false;
-    } catch (error) {
-      // If validation fails, username is not available
+    } catch (validationError) {
+      // If validation fails (reserved username, invalid format, etc.),
+      // the username is not available due to validation rules
+      console.log('Username validation failed:', validationError.message);
       return false;
     }
   }
