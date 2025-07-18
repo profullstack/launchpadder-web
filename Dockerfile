@@ -63,9 +63,6 @@ COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN npm install -g pnpm
 RUN pnpm install --prod --frozen-lockfile
 
-# Install Supabase CLI for migrations
-RUN pnpm add supabase --save-dev --allow-build=supabase
-
 # Copy database migrations and scripts
 COPY --from=builder /app/supabase ./supabase
 COPY --from=builder /app/bin ./bin
@@ -76,6 +73,14 @@ RUN chown ${USERNAME}:${USERNAME} /app/uploads /app/logs
 
 # Make entrypoint script executable
 RUN chmod +x /app/bin/docker-entrypoint.sh
+
+# Install Supabase CLI for migrations (as root before switching user)
+RUN apk add --no-cache wget tar
+RUN wget -O /tmp/supabase.tar.gz https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz && \
+    tar -xzf /tmp/supabase.tar.gz -C /tmp && \
+    mv /tmp/supabase /usr/local/bin/supabase && \
+    chmod +x /usr/local/bin/supabase && \
+    rm -f /tmp/supabase.tar.gz
 
 USER ${USERNAME}
 

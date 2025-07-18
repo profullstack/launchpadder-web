@@ -531,7 +531,7 @@ services:
     container_name: launchpadder-app
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
       args:
         PUBLIC_SUPABASE_URL: http://kong:${KONG_HTTP_PORT}
         PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
