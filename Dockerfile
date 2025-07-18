@@ -42,8 +42,14 @@ ENV NODE_ENV=production
 # Disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 $USER
-RUN adduser --system --uid 1001 $USER
+# Accept build arguments for user/group IDs from host
+ARG USER_ID=1001
+ARG GROUP_ID=1001
+ARG USERNAME=appuser
+
+# Create group and user with host OS IDs
+RUN addgroup --system --gid ${GROUP_ID} ${USERNAME} && \
+    adduser --system --uid ${USER_ID} --ingroup ${USERNAME} ${USERNAME}
 
 # Copy the built application
 COPY --from=builder /app/build ./build
@@ -59,9 +65,9 @@ COPY --from=builder /app/supabase ./supabase
 
 # Create uploads and logs directories
 RUN mkdir -p /app/uploads /app/logs
-RUN chown sveltekit:nodejs /app/uploads /app/logs
+RUN chown ${USERNAME}:${USERNAME} /app/uploads /app/logs
 
-USER sveltekit
+USER ${USERNAME}
 
 EXPOSE 3000
 
