@@ -1,0 +1,139 @@
+# Modern Supabase Docker Compose using official supabase/supabase image
+# This replaces the outdated microservices approach with the official all-in-one image
+
+services:
+  # Official Supabase Local Development Stack
+  # Includes: PostgreSQL, PostgREST, GoTrue, Realtime, Storage, Edge Functions, Studio
+  supabase:
+    container_name: supabase-local
+    image: supabase/supabase:latest
+    restart: unless-stopped
+    ports:
+      # Supabase Studio (Web UI)
+      - "${STUDIO_PORT:-3001}:3000"
+      # Kong API Gateway (Main API endpoint)
+      - "${KONG_HTTP_PORT:-8000}:8000"
+      # PostgreSQL Database (direct access)
+      - "${POSTGRES_PORT:-5432}:5432"
+      # PostgREST API
+      - "3001:3001"
+      # GoTrue Auth
+      - "9999:9999"
+      # Realtime
+      - "4000:4000"
+      # Storage API
+      - "5000:5000"
+    environment:
+      # Database Configuration
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supabase123}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY: ${JWT_EXPIRY:-3600}
+      
+      # API Keys
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      
+      # External URLs
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      
+      # Studio Configuration
+      STUDIO_DEFAULT_ORGANIZATION: ${STUDIO_DEFAULT_ORGANIZATION:-Default Organization}
+      STUDIO_DEFAULT_PROJECT: ${STUDIO_DEFAULT_PROJECT:-Default Project}
+      
+      # Auth Configuration
+      DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      ENABLE_EMAIL_SIGNUP: ${ENABLE_EMAIL_SIGNUP:-true}
+      ENABLE_EMAIL_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-true}
+      ENABLE_ANONYMOUS_USERS: ${ENABLE_ANONYMOUS_USERS:-false}
+      ENABLE_PHONE_SIGNUP: ${ENABLE_PHONE_SIGNUP:-false}
+      ENABLE_PHONE_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM:-false}
+      
+      # SMTP Configuration (optional)
+      SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-}
+      
+      # Additional redirect URLs
+      ADDITIONAL_REDIRECT_URLS: ${ADDITIONAL_REDIRECT_URLS:-}
+      
+      # Dashboard credentials
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-supabase}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-supabase}
+      
+      # PostgREST Configuration
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public}
+      
+      # Functions Configuration
+      FUNCTIONS_VERIFY_JWT: ${FUNCTIONS_VERIFY_JWT:-false}
+      
+      # Image proxy configuration
+      IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION:-true}
+    volumes:
+      # Persist database data
+      - supabase-db-data:/var/lib/postgresql/data
+      # Mount your migrations
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      # Mount your functions
+      - ./supabase/functions:/home/deno/functions:ro
+      # Mount your seed data (optional)
+      - ./supabase/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # LaunchPadder Web Application
+  web:
+    container_name: launchpadder-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
+        PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        USER_ID: ${DOCKER_UID:-1001}
+        GROUP_ID: ${DOCKER_GID:-1001}
+        USERNAME: ${DOCKER_USERNAME:-appuser}
+    restart: unless-stopped
+    depends_on:
+      supabase:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      # Use the single Supabase container
+      SUPABASE_URL: http://supabase:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL:-http://localhost:8000}
+      PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      
+      # External service keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY}
+      
+      # URLs
+      SITE_URL: ${SITE_URL}
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+
+volumes:
+  supabase-db-data:
+    driver: local
+
+networks:
+  default:
+    name: supabase_network_launchpadder
