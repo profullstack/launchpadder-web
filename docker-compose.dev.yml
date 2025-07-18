@@ -1,0 +1,34 @@
+# Development override for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --watch
+
+services:
+  app:
+    build:
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+            - "**/*.test.js"
+            - "**/*.spec.js"
+        - action: sync
+          path: ./static
+          target: /app/static
+        - action: sync
+          path: ./app.html
+          target: /app/app.html
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./svelte.config.js
+        - action: rebuild
+          path: ./vite.config.js
+        - action: rebuild
+          path: ./.env*

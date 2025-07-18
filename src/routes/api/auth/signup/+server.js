@@ -22,6 +22,8 @@ export async function POST({ request }) {
 
     // Check if username is available
     const isUsernameAvailable = await authService.isUsernameAvailable(username);
+    console.log(`Username availability check for "${username}":`, isUsernameAvailable);
+    
     if (!isUsernameAvailable) {
       return json(
         { error: 'Username is already taken' },
