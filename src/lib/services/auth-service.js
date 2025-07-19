@@ -423,8 +423,11 @@ export class AuthService {
    */
   async isUsernameAvailable(username) {
     try {
+      console.log(`Checking username availability for: "${username}"`);
+      
       // First validate the username format and reserved names
       this.validateUsername(username);
+      console.log('Username validation passed');
 
       // Then check if it exists in the database
       const { data, error } = await this.supabase
@@ -433,13 +436,17 @@ export class AuthService {
         .eq('username', username)
         .single();
 
+      console.log('Database query result:', { data, error });
+
       // If no error and data exists, username is taken
       if (!error && data) {
+        console.log('Username found in database - not available');
         return false;
       }
 
       // If error is "No rows found", username is available
       if (error && error.code === 'PGRST116') {
+        console.log('No rows found - username is available');
         return true;
       }
 
