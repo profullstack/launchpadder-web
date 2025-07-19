@@ -1,15 +1,18 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { supabase } from '$lib/config/supabase.js';
   import { _ } from 'svelte-i18n';
+  import { isAuthenticated, userDisplayInfo, updateUserProfile } from '$lib/stores/auth.js';
+  import { authApi, userApi } from '$lib/services/api-client.js';
   
-  let user = null;
-  let userProfile = null;
   let loading = true;
   let saving = false;
   let error = null;
   let successMessage = null;
+  
+  // Use reactive authentication state
+  $: authenticated = $isAuthenticated;
+  $: displayInfo = $userDisplayInfo;
   
   // Form data
   let formData = {
@@ -32,17 +35,33 @@
 
   onMount(async () => {
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      user = session?.user ?? null;
-      
-      if (!user) {
-        goto('/auth/login');
+      // Check authentication using our auth store
+      if (!$isAuthenticated) {
+        goto('/auth/login?redirect=' + encodeURIComponent('/dashboard/settings'));
         return;
       }
 
-      // Fetch user profile
-      await loadUserProfile();
+      // Load user profile from the store
+      if ($userDisplayInfo) {
+        const profile = $userDisplayInfo.profile;
+        formData = {
+          full_name: profile?.full_name || '',
+          username: profile?.username || '',
+          email: $userDisplayInfo.email || '',
+          bio: profile?.bio || '',
+          website: profile?.website || '',
+          location: profile?.location || '',
+          avatar_url: profile?.avatar_url || ''
+        };
+        
+        // Load user settings (if they exist)
+        settings = {
+          email_notifications: profile?.email_notifications ?? true,
+          marketing_emails: profile?.marketing_emails ?? false,
+          security_alerts: profile?.security_alerts ?? true,
+          theme: profile?.theme || 'system'
+        };
+      }
       
     } catch (err) {
       console.error('Settings error:', err);
@@ -52,45 +71,6 @@
     }
   });
 
-  async function loadUserProfile() {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (fetchError) {
-        throw fetchError;
-      }
-      
-      userProfile = data;
-      
-      // Populate form data
-      formData = {
-        full_name: data.full_name || '',
-        username: data.username || '',
-        email: user.email || '',
-        bio: data.bio || '',
-        website: data.website || '',
-        location: data.location || '',
-        avatar_url: data.avatar_url || ''
-      };
-      
-      // Load user settings (if they exist)
-      settings = {
-        email_notifications: data.email_notifications ?? true,
-        marketing_emails: data.marketing_emails ?? false,
-        security_alerts: data.security_alerts ?? true,
-        theme: data.theme || 'system'
-      };
-      
-    } catch (err) {
-      console.error('Error loading user profile:', err);
-      error = err.message;
-    }
-  }
-
   async function handleSaveProfile() {
     if (saving) return;
     
@@ -99,65 +79,44 @@
     successMessage = null;
     
     try {
-      // Update user profile
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          full_name: formData.full_name,
-          username: formData.username,
-          bio: formData.bio,
-          website: formData.website,
-          location: formData.location,
-          avatar_url: formData.avatar_url,
-          email_notifications: settings.email_notifications,
-          marketing_emails: settings.marketing_emails,
-          security_alerts: settings.security_alerts,
-          theme: settings.theme,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+      // Update user profile using our API client
+      const updatedProfile = await userApi.updateUser($userDisplayInfo.id, {
+        full_name: formData.full_name,
+        username: formData.username,
+        bio: formData.bio,
+        website: formData.website,
+        location: formData.location,
+        avatar_url: formData.avatar_url,
+        email_notifications: settings.email_notifications,
+        marketing_emails: settings.marketing_emails,
+        security_alerts: settings.security_alerts,
+        theme: settings.theme
+      });
       
-      if (updateError) {
-        throw updateError;
-      }
+      // Update the auth store with new profile data
+      updateUserProfile(updatedProfile);
       
       // Update email if changed
-      if (formData.email !== user.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: formData.email
-        });
-        
-        if (emailError) {
-          throw emailError;
-        }
+      if (formData.email !== $userDisplayInfo.email) {
+        await authApi.updateEmail(formData.email);
       }
       
       successMessage = 'Settings saved successfully!';
-      await loadUserProfile(); // Reload to get updated data
       
     } catch (err) {
       console.error('Error saving settings:', err);
-      error = err.message;
+      error = err.message || 'Failed to save settings';
     } finally {
       saving = false;
     }
   }
 
   async function handleChangePassword() {
-    // This would typically open a modal or redirect to a password change page
-    // For now, we'll use Supabase's built-in password reset
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
+      await authApi.requestPasswordReset($userDisplayInfo.email);
       successMessage = 'Password reset email sent! Check your inbox.';
     } catch (err) {
-      error = err.message;
+      error = err.message || 'Failed to send password reset email';
     }
   }
 </script>

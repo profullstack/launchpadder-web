@@ -2,6 +2,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { setAuthData, isAuthenticated } from '$lib/stores/auth.js';
+  import { authApi } from '$lib/services/api-client.js';
   
   // State
   let email = '';
@@ -15,6 +17,11 @@
   
   onMount(() => {
     redirectTo = $page.url.searchParams.get('redirect') || '/';
+    
+    // If user is already authenticated, redirect them
+    if ($isAuthenticated) {
+      goto(redirectTo);
+    }
   });
   
   async function handleSubmit() {
@@ -24,27 +31,25 @@
     loading = true;
     
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password
-        })
-      });
+      // Use the new API client for login
+      const result = await authApi.login(email.trim(), password);
       
-      const result = await response.json();
+      // Store authentication data in localStorage and stores
+      setAuthData(result.user, result.session, result.user.profile);
       
-      if (response.ok) {
-        // Successful login - redirect to intended page
-        goto(redirectTo);
-      } else {
-        error = result.error || 'Login failed';
-      }
+      // Successful login - redirect to intended page
+      goto(redirectTo);
     } catch (err) {
-      error = 'Network error. Please try again.';
+      // Handle different types of errors
+      if (err.status === 401) {
+        error = 'Invalid email or password';
+      } else if (err.status === 400) {
+        error = err.message || 'Please check your input';
+      } else if (err.message.includes('Network')) {
+        error = 'Network error. Please check your connection.';
+      } else {
+        error = err.message || 'Login failed. Please try again.';
+      }
       console.error('Login error:', err);
     } finally {
       loading = false;

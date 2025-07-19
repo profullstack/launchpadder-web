@@ -2,21 +2,25 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { isAuthenticated, userDisplayInfo } from '$lib/stores/auth.js';
+  import { dashboardApi } from '$lib/services/api-client.js';
   
-  let user = null;
   let loading = true;
   let overviewStats = null;
   let systemHealth = null;
   let error = null;
   let timeRange = '30d';
 
+  // Use reactive authentication state
+  $: authenticated = $isAuthenticated;
+  $: displayInfo = $userDisplayInfo;
+
   // Check authentication and load dashboard data
   onMount(async () => {
     try {
-      // Check if user is authenticated (simplified)
-      const token = localStorage.getItem('supabase.auth.token');
-      if (!token) {
-        goto('/auth/login');
+      // Check if user is authenticated using our auth store
+      if (!$isAuthenticated) {
+        goto('/auth/login?redirect=' + encodeURIComponent('/dashboard'));
         return;
       }
 
@@ -34,14 +38,7 @@
 
   async function loadOverview() {
     try {
-      const token = localStorage.getItem('supabase.auth.token');
-      const response = await fetch(`/api/dashboard/overview?time_range=${timeRange}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
+      const data = await dashboardApi.getOverview({ time_range: timeRange });
       if (data.success) {
         overviewStats = data.overview;
       } else {
@@ -55,10 +52,9 @@
 
   async function loadSystemHealth() {
     try {
-      const token = localStorage.getItem('supabase.auth.token');
       const response = await fetch('/api/dashboard/health', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_session') ? JSON.parse(localStorage.getItem('auth_session')).access_token : ''}`
         }
       });
 
