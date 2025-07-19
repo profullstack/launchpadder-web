@@ -3,13 +3,12 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { isAuthenticated, userDisplayInfo } from '$lib/stores/auth.js';
-  import { dashboardApi } from '$lib/services/api-client.js';
+  import { api } from '$lib/services/api-client.js';
   
   let loading = true;
-  let overviewStats = null;
-  let systemHealth = null;
+  let userSubmissions = [];
+  let submissionStats = null;
   let error = null;
-  let timeRange = '30d';
 
   // Use reactive authentication state
   $: authenticated = $isAuthenticated;
@@ -24,9 +23,8 @@
         return;
       }
 
-      // Load dashboard overview
-      await loadOverview();
-      await loadSystemHealth();
+      // Load user submissions
+      await loadUserSubmissions();
       
     } catch (err) {
       console.error('Dashboard error:', err);
@@ -36,455 +34,257 @@
     }
   });
 
-  async function loadOverview() {
+  async function loadUserSubmissions() {
     try {
-      const data = await dashboardApi.getOverview({ time_range: timeRange });
-      if (data.success) {
-        overviewStats = data.overview;
+      // Load user's submissions with my=true parameter to get user-specific submissions
+      const response = await api.get('/api/submissions?my=true&limit=50');
+      
+      // Handle the response structure
+      if (response.success && response.data) {
+        userSubmissions = response.data;
+      } else if (response.submissions) {
+        userSubmissions = response.submissions;
       } else {
-        throw new Error(data.error);
+        userSubmissions = [];
       }
+      
+      // Calculate basic stats
+      submissionStats = {
+        total: userSubmissions.length,
+        pending: userSubmissions.filter(s => s.status === 'pending').length,
+        approved: userSubmissions.filter(s => s.status === 'approved').length,
+        rejected: userSubmissions.filter(s => s.status === 'rejected').length
+      };
+      
     } catch (err) {
-      console.error('Error loading overview:', err);
-      error = err.message;
+      console.error('Error loading user submissions:', err);
+      // If submissions API doesn't exist, show empty state instead of error
+      userSubmissions = [];
+      submissionStats = { total: 0, pending: 0, approved: 0, rejected: 0 };
     }
-  }
-
-  async function loadSystemHealth() {
-    try {
-      const response = await fetch('/api/dashboard/health', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_session') ? JSON.parse(localStorage.getItem('auth_session')).access_token : ''}`
-        }
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        systemHealth = data.health;
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (err) {
-      console.error('Error loading system health:', err);
-      // Don't set error for health check failures
-    }
-  }
-
-  async function handleTimeRangeChange() {
-    loading = true;
-    await loadOverview();
-    loading = false;
-  }
-
-  function formatNumber(num) {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
-    return num?.toString() || '0';
-  }
-
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount || 0);
   }
 </script>
 
-<svelte:head>
-  <title>Platform Dashboard - LaunchPadder</title>
-</svelte:head>
-
-<div class="dashboard-container">
-  <header class="dashboard-header">
-    <h1>Platform Dashboard</h1>
-    <div class="time-range-selector">
-      <label for="timeRange">Time Range:</label>
-      <select id="timeRange" bind:value={timeRange} on:change={handleTimeRangeChange}>
-        <option value="7d">Last 7 days</option>
-        <option value="30d">Last 30 days</option>
-        <option value="90d">Last 90 days</option>
-        <option value="1y">Last year</option>
-      </select>
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">My Dashboard</h1>
+      <p class="mt-2 text-gray-600">Welcome back, {displayInfo?.profile?.full_name || displayInfo?.email || 'User'}!</p>
     </div>
-  </header>
 
-  {#if loading}
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>Loading dashboard...</p>
-    </div>
-  {:else if error}
-    <div class="error">
-      <h2>Error Loading Dashboard</h2>
-      <p>{error}</p>
-      <button on:click={() => window.location.reload()}>Retry</button>
-    </div>
-  {:else}
-    <!-- Overview Stats -->
-    {#if overviewStats}
-      <section class="overview-stats">
-        <div class="stat-card">
-          <h3>Total Submissions</h3>
-          <div class="stat-value">{formatNumber(overviewStats.total_submissions)}</div>
-          <div class="stat-breakdown">
-            <span class="pending">Pending: {overviewStats.pending_submissions}</span>
-            <span class="approved">Approved: {overviewStats.approved_submissions}</span>
-            <span class="rejected">Rejected: {overviewStats.rejected_submissions}</span>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <h3>Total Users</h3>
-          <div class="stat-value">{formatNumber(overviewStats.total_users)}</div>
-          <div class="stat-change">
-            +{overviewStats.new_users_this_period} new this period
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <h3>Total Revenue</h3>
-          <div class="stat-value">{formatCurrency(overviewStats.total_revenue)}</div>
-          <div class="stat-change">
-            +{formatCurrency(overviewStats.revenue_this_period)} this period
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <h3>Federation Network</h3>
-          <div class="stat-value">{overviewStats.federation_instances}</div>
-          <div class="stat-breakdown">
-            <span class="active">Active: {overviewStats.active_federation_instances}</span>
-          </div>
-        </div>
-      </section>
-    {/if}
-
-    <!-- System Health -->
-    {#if systemHealth}
-      <section class="system-health">
-        <h2>System Health</h2>
-        <div class="health-grid">
-          <div class="health-item">
-            <span class="health-label">Overall Status</span>
-            <span class="health-status {systemHealth.status}">{systemHealth.status}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Uptime</span>
-            <span class="health-value">{systemHealth.uptime}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Response Time</span>
-            <span class="health-value">{systemHealth.response_time}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Error Rate</span>
-            <span class="health-value">{systemHealth.error_rate}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Database</span>
-            <span class="health-status {systemHealth.database_status}">{systemHealth.database_status}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-label">Payments</span>
-            <span class="health-status {systemHealth.payment_systems?.stripe}">{systemHealth.payment_systems?.stripe}</span>
-          </div>
-        </div>
-      </section>
-    {/if}
-
-    <!-- Quick Actions -->
-    <section class="quick-actions">
-      <h2>Quick Actions</h2>
-      <div class="action-grid">
-        <a href="/dashboard/analytics" class="action-card">
-          <h3>📊 Analytics</h3>
-          <p>View detailed analytics and reports</p>
-        </a>
-        <a href="/dashboard/submissions" class="action-card">
-          <h3>📝 Submissions</h3>
-          <p>Manage and moderate submissions</p>
-        </a>
-        <a href="/dashboard/users" class="action-card">
-          <h3>👥 Users</h3>
-          <p>User management and roles</p>
-        </a>
-        <a href="/dashboard/federation" class="action-card">
-          <h3>🌐 Federation</h3>
-          <p>Manage federation network</p>
-        </a>
-        <a href="/dashboard/settings" class="action-card">
-          <h3>⚙️ Settings</h3>
-          <p>Platform configuration</p>
-        </a>
-        <a href="/dashboard/audit-logs" class="action-card">
-          <h3>📋 Audit Logs</h3>
-          <p>View system audit trail</p>
-        </a>
+    {#if loading}
+      <div class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-    </section>
-  {/if}
+    {:else if error}
+      <div class="bg-red-50 border border-red-200 rounded-md p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {:else}
+      <!-- Submission Stats -->
+      {#if submissionStats}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-gray-500 truncate">Total Submissions</dt>
+                    <dd class="text-lg font-medium text-gray-900">{submissionStats.total}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <svg class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-gray-500 truncate">Pending Review</dt>
+                    <dd class="text-lg font-medium text-gray-900">{submissionStats.pending}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-gray-500 truncate">Approved</dt>
+                    <dd class="text-lg font-medium text-gray-900">{submissionStats.approved}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-gray-500 truncate">Rejected</dt>
+                    <dd class="text-lg font-medium text-gray-900">{submissionStats.rejected}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Recent Submissions -->
+      <div class="bg-white shadow rounded-lg mb-8">
+        <div class="px-4 py-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Submissions</h3>
+            <a href="/submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              New Submission
+            </a>
+          </div>
+          
+          {#if userSubmissions.length === 0}
+            <div class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No submissions yet</h3>
+              <p class="mt-1 text-sm text-gray-500">Get started by creating your first submission.</p>
+              <div class="mt-6">
+                <a href="/submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Submission
+                </a>
+              </div>
+            </div>
+          {:else}
+            <div class="overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  {#each userSubmissions.slice(0, 5) as submission}
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{submission.title || 'Untitled'}</div>
+                        <div class="text-sm text-gray-500">{submission.description?.substring(0, 60) || 'No description'}...</div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                          {submission.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                           submission.status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                           'bg-yellow-100 text-yellow-800'}">
+                          {submission.status || 'pending'}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(submission.created_at).toLocaleDateString()}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="/submissions/{submission.id}" class="text-blue-600 hover:text-blue-900">View</a>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+              
+              {#if userSubmissions.length > 5}
+                <div class="bg-gray-50 px-6 py-3">
+                  <div class="text-sm text-gray-500 text-center">
+                    Showing 5 of {userSubmissions.length} submissions. 
+                    <a href="/dashboard/submissions" class="text-blue-600 hover:text-blue-900 font-medium">View all</a>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a href="/submit" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <div class="flex items-center">
+                <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span class="ml-3 text-sm font-medium text-gray-900">New Submission</span>
+              </div>
+            </a>
+            
+            <a href="/dashboard/submissions" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <div class="flex items-center">
+                <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span class="ml-3 text-sm font-medium text-gray-900">View All Submissions</span>
+              </div>
+            </a>
+            
+            <a href="/dashboard/settings" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <div class="flex items-center">
+                <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span class="ml-3 text-sm font-medium text-gray-900">Account Settings</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
 </div>
-
-<style>
-  .dashboard-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-
-  .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #e5e7eb;
-  }
-
-  .dashboard-header h1 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 2rem;
-    font-weight: 700;
-  }
-
-  .time-range-selector {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .time-range-selector label {
-    font-weight: 500;
-    color: #6b7280;
-  }
-
-  .time-range-selector select {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    background: white;
-  }
-
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem;
-    color: #6b7280;
-  }
-
-  .spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 3px solid #e5e7eb;
-    border-top: 3px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .error {
-    text-align: center;
-    padding: 2rem;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.5rem;
-    color: #dc2626;
-  }
-
-  .error button {
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background: #dc2626;
-    color: white;
-    border: none;
-    border-radius: 0.375rem;
-    cursor: pointer;
-  }
-
-  .overview-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .stat-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e7eb;
-  }
-
-  .stat-card h3 {
-    margin: 0 0 0.5rem 0;
-    color: #6b7280;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-  }
-
-  .stat-breakdown {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.875rem;
-  }
-
-  .stat-breakdown .pending { color: #f59e0b; }
-  .stat-breakdown .approved { color: #10b981; }
-  .stat-breakdown .rejected { color: #ef4444; }
-  .stat-breakdown .active { color: #10b981; }
-
-  .stat-change {
-    font-size: 0.875rem;
-    color: #10b981;
-    font-weight: 500;
-  }
-
-  .system-health {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e7eb;
-    margin-bottom: 2rem;
-  }
-
-  .system-health h2 {
-    margin: 0 0 1rem 0;
-    color: #1f2937;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .health-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-  }
-
-  .health-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: #f9fafb;
-    border-radius: 0.375rem;
-  }
-
-  .health-label {
-    font-weight: 500;
-    color: #6b7280;
-  }
-
-  .health-status.healthy {
-    color: #10b981;
-    font-weight: 600;
-  }
-
-  .health-status.unhealthy {
-    color: #ef4444;
-    font-weight: 600;
-  }
-
-  .health-value {
-    font-weight: 600;
-    color: #1f2937;
-  }
-
-  .quick-actions {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e7eb;
-  }
-
-  .quick-actions h2 {
-    margin: 0 0 1rem 0;
-    color: #1f2937;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .action-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-  }
-
-  .action-card {
-    display: block;
-    padding: 1rem;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s;
-  }
-
-  .action-card:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-    transform: translateY(-1px);
-  }
-
-  .action-card h3 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
-  .action-card p {
-    margin: 0;
-    color: #6b7280;
-    font-size: 0.875rem;
-  }
-
-  @media (max-width: 768px) {
-    .dashboard-container {
-      padding: 1rem;
-    }
-
-    .dashboard-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
-    .overview-stats {
-      grid-template-columns: 1fr;
-    }
-
-    .health-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .action-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

@@ -69,7 +69,7 @@ export async function POST({ request, locals }) {
 /**
  * GET /api/submissions - Get submissions with filtering and pagination
  */
-export async function GET({ url }) {
+export async function GET({ url, locals }) {
   try {
     // Parse query parameters
     const searchParams = url.searchParams;
@@ -81,6 +81,20 @@ export async function GET({ url }) {
       sortBy: searchParams.get('sortBy') || 'created_at',
       sortOrder: searchParams.get('sortOrder') || 'desc'
     };
+
+    // Check if user wants their own submissions
+    const mySubmissions = searchParams.get('my') === 'true';
+    if (mySubmissions) {
+      // Require authentication for user-specific submissions
+      const user = locals.user;
+      if (!user?.id) {
+        throw error(401, 'Authentication required');
+      }
+      
+      // Filter by user and include all statuses for their own submissions
+      options.user_id = user.id;
+      options.status = searchParams.get('status') || 'all'; // Default to all statuses for user's own submissions
+    }
 
     // Handle tags parameter (comma-separated)
     const tagsParam = searchParams.get('tags');
@@ -110,6 +124,12 @@ export async function GET({ url }) {
 
   } catch (err) {
     console.error('Submissions fetch error:', err);
+    
+    // Handle specific error types
+    if (err.message.includes('Authentication required')) {
+      throw error(401, err.message);
+    }
+    
     throw error(500, 'Failed to fetch submissions');
   }
 }
