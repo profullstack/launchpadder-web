@@ -7,6 +7,7 @@
   import MobileNav from '$lib/components/MobileNav.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+  import UserDropdown from '$lib/components/UserDropdown.svelte';
   import { themeStore } from '$lib/stores/theme.js';
   import { initI18n, setLocale, getTextDirection } from '$lib/i18n/index.js';
   import { locale, _ } from 'svelte-i18n';
@@ -15,6 +16,7 @@
   export let data;
   
   let user = null;
+  let userProfile = null;
   let loading = true;
   let mobileMenuOpen = false;
 
@@ -33,6 +35,32 @@
     document.documentElement.lang = $locale;
   }
 
+  // Function to fetch user profile
+  async function fetchUserProfile(userId) {
+    if (!userId) {
+      userProfile = null;
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        userProfile = null;
+      } else {
+        userProfile = data;
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      userProfile = null;
+    }
+  }
+
   onMount(async () => {
     // Initialize theme system
     themeStore.init();
@@ -40,12 +68,25 @@
     // Get initial session
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user ?? null;
+    
+    // Fetch user profile if user exists
+    if (user) {
+      await fetchUserProfile(user.id);
+    }
+    
     loading = false;
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         user = session?.user ?? null;
+        
+        // Fetch profile for new user or clear it when signed out
+        if (user) {
+          await fetchUserProfile(user.id);
+        } else {
+          userProfile = null;
+        }
         
         if (event === 'SIGNED_IN') {
           goto('/dashboard');
@@ -61,6 +102,10 @@
   async function handleSignOut() {
     await supabase.auth.signOut();
     mobileMenuOpen = false;
+  }
+
+  function handleSettings() {
+    goto('/dashboard/settings');
   }
 
   function toggleMobileMenu() {
@@ -121,7 +166,12 @@
           <a href="/dashboard" class:active={$page.url.pathname === '/dashboard'}>{$_('navigation.dashboard')}</a>
           <LanguageSwitcher variant="dropdown" size="medium" showFlags={true} showLabels={false} />
           <ThemeToggle variant="icon" size="medium" showLabel={false} />
-          <button on:click={handleSignOut} class="btn btn-outline">{$_('navigation.signOut')}</button>
+          <UserDropdown
+            {user}
+            profile={userProfile}
+            on:signout={handleSignOut}
+            on:settings={handleSettings}
+          />
         {:else}
           <LanguageSwitcher variant="dropdown" size="medium" showFlags={true} showLabels={false} />
           <ThemeToggle variant="icon" size="medium" showLabel={false} />
