@@ -30,6 +30,45 @@ export async function POST({ request, locals }) {
     // Parse request body
     const body = await request.json();
     
+    // Handle free tier submissions
+    if (body.submission_type === 'free') {
+      // Check if user is admin
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      const isAdmin = userData?.is_admin || false;
+
+      if (!isAdmin) {
+        // Check daily limit for non-admin users
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+        const { data: todaySubmissions, error: countError } = await supabase
+          .from('submissions')
+          .select('id')
+          .eq('user_id', user.id)
+          .gte('created_at', startOfDay.toISOString())
+          .lt('created_at', endOfDay.toISOString());
+
+        if (countError) {
+          console.error('Error checking daily submissions:', countError);
+          throw error(500, 'Failed to check daily submission limit');
+        }
+
+        if (todaySubmissions && todaySubmissions.length >= 1) {
+          throw error(429, 'Daily free submission limit reached. Please try again tomorrow or choose a paid option.');
+        }
+      }
+
+      // Set free tier specific options
+      body.payment_intent = 0;
+      body.payment_status = 'completed'; // Free submissions don't need payment
+    }
+    
     // Create submission
     const submission = await getSubmissionService().createSubmission(body, user.id);
     
@@ -46,7 +85,11 @@ export async function POST({ request, locals }) {
       throw error(401, err.message);
     }
     
-    if (err.message.includes('URL is required') || 
+    if (err.message.includes('Daily free submission limit reached')) {
+      throw error(429, err.message);
+    }
+    
+    if (err.message.includes('URL is required') ||
         err.message.includes('Invalid URL format') ||
         err.message.includes('already been submitted')) {
       throw error(400, err.message);

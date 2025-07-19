@@ -1,11 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { supabase } from '$lib/config/supabase.js';
+  import { isAuthenticated, userDisplayInfo } from '$lib/stores/auth.js';
+  import { api } from '$lib/services/api-client.js';
   
   // Form state
   let url = '';
-  let submissionType = 'basic'; // 'basic' or 'federated'
+  let submissionType = 'free'; // 'free', 'basic' or 'federated'
   let loading = false;
   let error = null;
   let success = false;
@@ -15,22 +16,44 @@
   let previewData = null;
   let previewError = null;
   
-  // User authentication
-  let user = null;
-  let authLoading = true;
+  // Free tier state
+  let dailySubmissionsUsed = 0;
+  let canUseFree = false;
+  let isAdmin = false;
+  
+  // Reactive authentication state
+  $: authenticated = $isAuthenticated;
+  $: displayInfo = $userDisplayInfo;
   
   // Pricing
   const pricing = {
+    free: { price: 0, description: 'One free submission per day' },
     basic: { price: 29, description: 'Submit to this directory only' },
     federated: { price: 99, description: 'Submit to multiple federated directories' }
   };
   
   onMount(async () => {
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user ?? null;
-    authLoading = false;
+    // Check if user is authenticated and load their daily submission count
+    if ($isAuthenticated) {
+      await checkDailySubmissions();
+    }
   });
+
+  async function checkDailySubmissions() {
+    try {
+      // Check user's daily submission count and admin status
+      const response = await api.get('/api/submissions/daily-status');
+      if (response.success) {
+        dailySubmissionsUsed = response.daily_count || 0;
+        isAdmin = response.is_admin || false;
+        canUseFree = isAdmin || dailySubmissionsUsed < 1; // Admins can always use free, others get 1 per day
+      }
+    } catch (err) {
+      console.error('Error checking daily submissions:', err);
+      // Default to allowing free tier if we can't check
+      canUseFree = true;
+    }
+  }
   
   // Debounced URL preview
   let previewTimeout;
@@ -83,8 +106,8 @@
   }
   
   async function handleSubmit() {
-    if (!user) {
-      goto('/auth/signin?redirect=/submit');
+    if (!$isAuthenticated) {
+      goto('/auth/login?redirect=/submit');
       return;
     }
     
@@ -92,37 +115,36 @@
       error = 'Please enter a valid URL';
       return;
     }
+
+    // Check free tier limits
+    if (submissionType === 'free' && !canUseFree) {
+      error = 'You have reached your daily free submission limit. Please choose a paid option or try again tomorrow.';
+      return;
+    }
     
     loading = true;
     error = null;
     
     try {
-      const response = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.access_token}`
-        },
-        body: JSON.stringify({
-          url,
-          submission_type: submissionType,
-          payment_intent: pricing[submissionType].price
-        })
+      const response = await api.post('/api/submissions', {
+        url,
+        submission_type: submissionType,
+        payment_intent: pricing[submissionType].price
       });
       
-      if (response.ok) {
-        const result = await response.json();
+      if (response.success) {
         success = true;
         
-        // Redirect to payment or success page
-        if (submissionType === 'basic') {
-          goto(`/submissions/${result.id}?success=true`);
+        // Redirect based on submission type
+        if (submissionType === 'free') {
+          goto(`/submit/success?id=${response.data.id}&type=free`);
+        } else if (submissionType === 'basic') {
+          goto(`/submit/success?id=${response.data.id}&type=basic`);
         } else {
-          goto(`/payment?submission=${result.id}&type=federated`);
+          goto(`/payment?submission=${response.data.id}&type=federated`);
         }
       } else {
-        const errorData = await response.json();
-        error = errorData.error || 'Failed to submit URL';
+        error = response.error || 'Failed to submit URL';
       }
     } catch (err) {
       error = 'Network error. Please try again.';
@@ -221,6 +243,40 @@
         <div class="form-group">
           <label class="form-label">Submission Type</label>
           <div class="submission-types">
+            <!-- Free Tier -->
+            <label class="submission-type" class:selected={submissionType === 'free'} class:disabled={!canUseFree}>
+              <input
+                type="radio"
+                bind:group={submissionType}
+                value="free"
+                class="radio-input"
+                disabled={!canUseFree}
+              />
+              <div class="type-content">
+                <div class="type-header">
+                  <h4>Free Submission</h4>
+                  <span class="price">FREE</span>
+                </div>
+                <p>{pricing.free.description}</p>
+                <ul class="features">
+                  <li>✓ Submit to this directory</li>
+                  <li>✓ Basic metadata extraction</li>
+                  <li>✓ Standard processing</li>
+                  {#if isAdmin}
+                    <li>✓ Admin: Unlimited free submissions</li>
+                  {:else}
+                    <li>✓ 1 submission per day</li>
+                  {/if}
+                </ul>
+                {#if !canUseFree}
+                  <div class="limit-badge">Daily limit reached</div>
+                {:else if dailySubmissionsUsed === 0}
+                  <div class="available-badge">Available today</div>
+                {/if}
+              </div>
+            </label>
+
+            <!-- Basic Submission -->
             <label class="submission-type" class:selected={submissionType === 'basic'}>
               <input
                 type="radio"
@@ -239,10 +295,12 @@
                   <li>✓ AI-generated descriptions</li>
                   <li>✓ Automatic metadata extraction</li>
                   <li>✓ SEO optimization</li>
+                  <li>✓ Priority processing</li>
                 </ul>
               </div>
             </label>
 
+            <!-- Federated Submission -->
             <label class="submission-type" class:selected={submissionType === 'federated'}>
               <input
                 type="radio"
@@ -277,22 +335,22 @@
 
         <!-- Submit Button -->
         <div class="form-actions">
-          {#if authLoading}
-            <div class="loading-spinner"></div>
-          {:else if !user}
+          {#if !$isAuthenticated}
             <p class="auth-notice">
-              <a href="/auth/signin?redirect=/submit" class="auth-link">Sign in</a> to submit your product
+              <a href="/auth/login?redirect=/submit" class="auth-link">Sign in</a> to submit your product
             </p>
           {:else}
             <button
               type="submit"
               class="submit-btn"
               class:loading
-              disabled={loading || !url || !isValidUrl(url)}
+              disabled={loading || !url || !isValidUrl(url) || (submissionType === 'free' && !canUseFree)}
             >
               {#if loading}
                 <div class="loading-spinner"></div>
                 Processing...
+              {:else if submissionType === 'free'}
+                Submit Product - FREE
               {:else}
                 Submit Product - ${pricing[submissionType].price}
               {/if}
@@ -597,6 +655,39 @@
     font-weight: 600;
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
+  }
+
+  .limit-badge {
+    position: absolute;
+    top: -0.5rem;
+    right: 1rem;
+    background: #dc2626;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .available-badge {
+    position: absolute;
+    top: -0.5rem;
+    right: 1rem;
+    background: #059669;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .submission-type.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .submission-type.disabled:hover {
+    border-color: #e5e7eb;
   }
 
   /* Actions */
