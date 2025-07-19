@@ -2,6 +2,7 @@ import { detectLocaleFromPath, validateLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES
 import { createRequestTracingMiddleware } from '$lib/middleware/request-tracing.js';
 import { errorHandler } from '$lib/services/error-handler.js';
 import { logger } from '$lib/services/logger.js';
+import { createClient } from '@supabase/supabase-js';
 
 // Create request tracing middleware
 const requestTracing = createRequestTracingMiddleware({
@@ -26,6 +27,66 @@ export async function handle({ event, resolve }) {
     const pathname = url.pathname;
     
     try {
+      // Initialize Supabase client for server-side authentication
+      const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseAnonKey) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        });
+        
+        // Get access token from cookies
+        const accessToken = event.cookies.get('sb-access-token');
+        const refreshToken = event.cookies.get('sb-refresh-token');
+        
+        if (accessToken && refreshToken) {
+          try {
+            // Set the session on the Supabase client
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (!sessionError && sessionData.user) {
+              // Store user in locals for use in load functions
+              event.locals.user = sessionData.user;
+              event.locals.session = sessionData.session;
+              
+              // Fetch user profile from users table
+              try {
+                const { data: profile } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', sessionData.user.id)
+                  .single();
+                
+                if (profile) {
+                  event.locals.userProfile = profile;
+                }
+              } catch (profileError) {
+                // Profile fetch failed, but user is still authenticated
+                logger.warn('Failed to fetch user profile', {
+                  userId: sessionData.user.id,
+                  error: profileError.message
+                });
+              }
+            } else {
+              // Session is invalid, clear cookies
+              event.cookies.delete('sb-access-token', { path: '/' });
+              event.cookies.delete('sb-refresh-token', { path: '/' });
+            }
+          } catch (authError) {
+            // Authentication failed, clear any invalid cookies
+            logger.warn('Server-side authentication failed', { error: authError.message });
+            event.cookies.delete('sb-access-token', { path: '/' });
+            event.cookies.delete('sb-refresh-token', { path: '/' });
+          }
+        }
+      }
       // Detect locale from URL path
       const detectedLocale = detectLocaleFromPath(pathname);
       

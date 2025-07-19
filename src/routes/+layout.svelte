@@ -15,8 +15,8 @@
   
   export let data;
   
-  let user = null;
-  let userProfile = null;
+  let user = data?.user || null;
+  let userProfile = data?.userProfile || null;
   let loading = true;
   let mobileMenuOpen = false;
 
@@ -65,13 +65,16 @@
     // Initialize theme system
     themeStore.init();
     
-    // Get initial session
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user ?? null;
-    
-    // Fetch user profile if user exists
-    if (user) {
-      await fetchUserProfile(user.id);
+    // If we don't have user data from server-side, try client-side
+    if (!user) {
+      // Get initial session
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user ?? null;
+      
+      // Fetch user profile if user exists
+      if (user) {
+        await fetchUserProfile(user.id);
+      }
     }
     
     loading = false;
