@@ -17,8 +17,7 @@ const __dirname = dirname(__filename);
 // Load environment variables from .env file
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-// Default JWT secret (fallback only)
-const DEFAULT_JWT_SECRET = 'your-super-secret-and-long-jwt-secret-with-at-least-32-characters-long';
+// No default JWT secret - must be provided via environment variable
 
 /**
  * Generate JWT tokens for Supabase
@@ -123,15 +122,29 @@ function verifyTokens(tokens) {
 function main() {
   console.log('🔐 Generating JWT tokens for Supabase...\n');
   
-  // Use JWT secret from environment, command line argument, or default (in that order)
-  const jwtSecret = process.env.JWT_SECRET || process.argv[2] || DEFAULT_JWT_SECRET;
+  // Use JWT secret from environment variable (JWT_TOKEN or JWT_SECRET) or command line argument
+  const jwtSecret = process.env.JWT_TOKEN || process.env.JWT_SECRET || process.argv[2];
   
-  if (jwtSecret.length < 32) {
-    console.error('❌ JWT secret must be at least 32 characters long');
+  if (!jwtSecret) {
+    console.error('❌ JWT secret is required but not provided!');
+    console.error('Please set the JWT_TOKEN environment variable in your .env file or pass it as a command line argument.');
+    console.error('\nExample:');
+    console.error('  JWT_TOKEN=your-secret-key node scripts/generate-jwt-tokens.js');
+    console.error('  or');
+    console.error('  node scripts/generate-jwt-tokens.js your-secret-key');
     process.exit(1);
   }
   
-  console.log('Using JWT secret from:', process.env.JWT_SECRET ? '.env file' : process.argv[2] ? 'command line' : 'default');
+  if (jwtSecret.length < 32) {
+    console.error('❌ JWT secret must be at least 32 characters long');
+    console.error('Current length:', jwtSecret.length);
+    process.exit(1);
+  }
+  
+  const secretSource = process.env.JWT_TOKEN ? 'JWT_TOKEN env var' :
+                      process.env.JWT_SECRET ? 'JWT_SECRET env var' :
+                      'command line argument';
+  console.log('Using JWT secret from:', secretSource);
   
   try {
     // Generate tokens
