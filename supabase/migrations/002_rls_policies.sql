@@ -105,9 +105,10 @@ CREATE POLICY "Users can delete their own API keys" ON public.api_keys
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, full_name, avatar_url)
+    INSERT INTO public.profiles (id, username, full_name, avatar_url)
     VALUES (
         NEW.id,
+        NEW.raw_user_meta_data->>'username',
         NEW.raw_user_meta_data->>'full_name',
         NEW.raw_user_meta_data->>'avatar_url'
     );

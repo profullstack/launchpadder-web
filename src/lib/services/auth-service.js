@@ -30,7 +30,7 @@ export class AuthService {
     this.validateUsername(username);
 
     try {
-      // Create auth user
+      // Create auth user with metadata for the database trigger
       const { data: authData, error: authError } = await this.supabase.auth.signUp({
         email,
         password,
@@ -46,36 +46,33 @@ export class AuthService {
         throw new Error(authError.message);
       }
 
-      // Create user profile
+      // The database trigger will automatically create the profile with all data
       if (authData.user) {
         try {
-          const { data: profileData, error: profileError } = await this.supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              username,
-              full_name: full_name || null
-            })
-            .select()
-            .single();
+          // Wait a brief moment for the trigger to complete
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-          if (profileError) {
-            // Handle duplicate username
-            if (profileError.code === '23505' && profileError.message.includes('username')) {
-              throw new Error('Username already taken');
-            }
-            throw new Error(`Profile creation failed: ${profileError.message}`);
+          // Fetch the profile that was created by the trigger
+          const profile = await this.getUserProfile(authData.user.id);
+          
+          if (!profile) {
+            throw new Error('Profile was not created by database trigger');
           }
 
           return {
             user: authData.user,
             session: authData.session,
-            profile: profileData
+            profile
           };
         } catch (profileError) {
-          // If profile creation fails, we should clean up the auth user
-          // In a real implementation, you might want to handle this differently
-          throw profileError;
+          // If we can't fetch the profile, still return the auth data
+          console.error('Profile fetch failed:', profileError);
+          
+          return {
+            user: authData.user,
+            session: authData.session,
+            profile: null
+          };
         }
       }
 
@@ -179,7 +176,7 @@ export class AuthService {
   async getUserProfile(userId) {
     try {
       const { data, error } = await this.supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', userId)
         .single();
@@ -218,7 +215,7 @@ export class AuthService {
 
     try {
       const { data, error } = await this.supabase
-        .from('profiles')
+        .from('users')
         .update({
           ...profileData,
           updated_at: new Date().toISOString()
@@ -431,7 +428,7 @@ export class AuthService {
 
       // Then check if it exists in the database
       const { data, error } = await this.supabase
-        .from('profiles')
+        .from('users')
         .select('username')
         .eq('username', username)
         .single();
