@@ -56,15 +56,8 @@ export async function POST({ request, locals }) {
     
     // Handle free tier submissions
     if (body.submission_type === 'free') {
-      // Check if user is admin using the database function
-      const { data: adminCheck, error: userError } = await authenticatedSupabase
-        .rpc('is_admin', { user_id: user.id });
-
-      if (userError) {
-        console.warn('Error checking admin status:', userError);
-      }
-
-      const isAdmin = adminCheck || false;
+      // Check if user is admin using the is_admin boolean property
+      const isAdmin = user.is_admin || false;
 
       if (!isAdmin) {
         // Check daily limit for non-admin users
