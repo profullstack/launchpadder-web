@@ -11,7 +11,12 @@ import { supabase } from '$lib/config/supabase.js';
 let submissionService;
 function getSubmissionService() {
   if (!submissionService) {
-    submissionService = createSubmissionService({ supabase });
+    submissionService = createSubmissionService({
+      supabase,
+      useEnhancedAI: false, // Disable AI for free submissions to avoid OpenAI API key requirement
+      aiRewriter: null, // Explicitly disable AI rewriter
+      enhancedAIService: null // Explicitly disable enhanced AI service
+    });
   }
   return submissionService;
 }
@@ -32,14 +37,15 @@ export async function POST({ request, locals }) {
     
     // Handle free tier submissions
     if (body.submission_type === 'free') {
-      // Check if user is admin
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
+      // Check if user is admin using the database function
+      const { data: adminCheck, error: userError } = await supabase
+        .rpc('is_admin', { user_id: user.id });
 
-      const isAdmin = userData?.is_admin || false;
+      if (userError) {
+        console.warn('Error checking admin status:', userError);
+      }
+
+      const isAdmin = adminCheck || false;
 
       if (!isAdmin) {
         // Check daily limit for non-admin users
@@ -50,7 +56,7 @@ export async function POST({ request, locals }) {
         const { data: todaySubmissions, error: countError } = await supabase
           .from('submissions')
           .select('id')
-          .eq('user_id', user.id)
+          .eq('submitted_by', user.id)
           .gte('created_at', startOfDay.toISOString())
           .lt('created_at', endOfDay.toISOString());
 
@@ -80,27 +86,30 @@ export async function POST({ request, locals }) {
   } catch (err) {
     console.error('Submission creation error:', err);
     
+    // Get error message safely
+    const errorMessage = err?.message || err?.toString() || 'Unknown error';
+    
     // Handle specific error types
-    if (err.message.includes('Authentication required')) {
-      throw error(401, err.message);
+    if (errorMessage.includes('Authentication required')) {
+      throw error(401, errorMessage);
     }
     
-    if (err.message.includes('Daily free submission limit reached')) {
-      throw error(429, err.message);
+    if (errorMessage.includes('Daily free submission limit reached')) {
+      throw error(429, errorMessage);
     }
     
-    if (err.message.includes('URL is required') ||
-        err.message.includes('Invalid URL format') ||
-        err.message.includes('already been submitted')) {
-      throw error(400, err.message);
+    if (errorMessage.includes('URL is required') ||
+        errorMessage.includes('Invalid URL format') ||
+        errorMessage.includes('already been submitted')) {
+      throw error(400, errorMessage);
     }
     
-    if (err.message.includes('Failed to fetch metadata')) {
+    if (errorMessage.includes('Failed to fetch metadata')) {
       throw error(422, 'Unable to fetch metadata from the provided URL');
     }
     
-    if (err.message.includes('AI service unavailable') ||
-        err.message.includes('Failed to rewrite metadata')) {
+    if (errorMessage.includes('AI service unavailable') ||
+        errorMessage.includes('Failed to rewrite metadata')) {
       throw error(503, 'AI service temporarily unavailable');
     }
     
@@ -168,9 +177,12 @@ export async function GET({ url, locals }) {
   } catch (err) {
     console.error('Submissions fetch error:', err);
     
+    // Get error message safely
+    const errorMessage = err?.message || err?.toString() || 'Unknown error';
+    
     // Handle specific error types
-    if (err.message.includes('Authentication required')) {
-      throw error(401, err.message);
+    if (errorMessage.includes('Authentication required')) {
+      throw error(401, errorMessage);
     }
     
     throw error(500, 'Failed to fetch submissions');

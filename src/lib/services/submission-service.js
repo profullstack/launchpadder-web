@@ -14,7 +14,7 @@ export class SubmissionService {
     this.metadataFetcher = options.metadataFetcher || new PuppeteerMetadataFetcher({
       timeout: 30000,
       waitForTimeout: 3000,
-      enableImages: false, // Faster loading for production
+      enableImages: true, // Enable images for logo and screenshot capture
       enableCaching: true
     });
     this.fallbackMetadataFetcher = options.fallbackMetadataFetcher || new SimpleMetadataFetcher({
@@ -408,7 +408,7 @@ export class SubmissionService {
         .from('submissions')
         .select(`
           *,
-          profiles:submitted_by (
+          profiles!submitted_by (
             id,
             username,
             full_name,

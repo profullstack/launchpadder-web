@@ -45,7 +45,8 @@ export async function POST({ request }) {
         supabase,
         useEnhancedAI: false, // Disable AI for faster preview
         aiRewriter: null, // Explicitly disable AI rewriter
-        enhancedAIService: null // Explicitly disable enhanced AI service
+        enhancedAIService: null, // Explicitly disable enhanced AI service
+        metadataFetcher: null // Use default PuppeteerMetadataFetcher with images enabled
       });
       console.log('[Preview API] Submission service created successfully with Supabase');
     } catch (serviceError) {
@@ -57,7 +58,8 @@ export async function POST({ request }) {
           supabase: null, // No database needed for preview
           useEnhancedAI: false,
           aiRewriter: null, // Explicitly disable AI rewriter
-          enhancedAIService: null // Explicitly disable enhanced AI service
+          enhancedAIService: null, // Explicitly disable enhanced AI service
+          metadataFetcher: null // Use default PuppeteerMetadataFetcher with images enabled
         });
         console.log('[Preview API] Submission service created successfully without Supabase and AI');
       } catch (fallbackError) {
