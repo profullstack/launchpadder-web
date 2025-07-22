@@ -198,7 +198,7 @@ export async function GET({ url, locals }) {
       });
       
       // Filter by user and include all statuses for their own submissions
-      options.user_id = user.id;
+      options.submitted_by = user.id;
       options.status = searchParams.get('status') || 'all'; // Default to all statuses for user's own submissions
     } else {
       // Use default service for public submissions

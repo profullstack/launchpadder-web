@@ -318,7 +318,7 @@ export class SubmissionService {
       search = '',
       sortBy = 'created_at',
       sortOrder = 'desc',
-      user_id = null
+      submitted_by = null
     } = options;
 
     try {
@@ -354,9 +354,9 @@ export class SubmissionService {
         }
       }
 
-      // Filter by user_id if provided
-      if (user_id) {
-        query = query.eq('submitted_by', user_id);
+      // Filter by submitted_by if provided
+      if (submitted_by) {
+        query = query.eq('submitted_by', submitted_by);
       }
 
       // Filter by tags
