@@ -56,11 +56,8 @@ export async function POST({ request, locals }) {
     
     // Handle free tier submissions
     if (body.submission_type === 'free') {
-      // Check if user is admin using the is_admin boolean property
-      const isAdmin = user.is_admin || false;
-
-      if (!isAdmin) {
-        // Check daily limit for non-admin users
+      // Check daily limit for non-admin users (admins get unlimited free submissions)
+      if (!user.is_admin) {
         const today = new Date();
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
