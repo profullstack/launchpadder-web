@@ -4,6 +4,7 @@
  */
 
 import { PuppeteerMetadataFetcher } from './puppeteer-metadata-fetcher.js';
+import { SimpleMetadataFetcher } from './simple-metadata-fetcher.js';
 import { createAIRewriter } from './ai-rewriter.js';
 import { createEnhancedAIService } from './enhanced-ai-service.js';
 
@@ -16,16 +17,24 @@ export class SubmissionService {
       enableImages: false, // Faster loading for production
       enableCaching: true
     });
-    this.aiRewriter = options.aiRewriter || createAIRewriter();
+    this.fallbackMetadataFetcher = options.fallbackMetadataFetcher || new SimpleMetadataFetcher({
+      timeout: 10000,
+      userAgent: 'ADLP-Bot/1.0 (+https://adlp.dev/bot)'
+    });
+    this.aiRewriter = options.aiRewriter !== undefined
+      ? options.aiRewriter
+      : createAIRewriter();
     this.enhancedAIService = options.enhancedAIService !== undefined
       ? options.enhancedAIService
-      : createEnhancedAIService({ aiRewriter: this.aiRewriter });
+      : (this.aiRewriter ? createEnhancedAIService({ aiRewriter: this.aiRewriter }) : null);
     this.useEnhancedAI = options.useEnhancedAI ?? true;
     this.maxRetries = options.maxRetries || 3;
     this.retryDelay = options.retryDelay || 1000;
+    this.useFallback = options.useFallback ?? true;
     
+    // Supabase is only required for database operations, not for metadata fetching
     if (!this.supabase) {
-      throw new Error('Supabase client is required');
+      console.warn('[SubmissionService] No Supabase client provided - database operations will be disabled');
     }
   }
 
@@ -154,18 +163,24 @@ export class SubmissionService {
   }
 
   /**
-   * Fetches metadata with retry logic
+   * Fetches metadata with retry logic and fallback mechanism
    * @param {string} url - The URL to fetch metadata from
    * @returns {Promise<Object>} The fetched metadata
    */
   async fetchMetadataWithRetry(url) {
-    let lastError;
+    let lastPuppeteerError;
+    let lastFallbackError;
     
+    // First, try with Puppeteer (primary method)
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        return await this.metadataFetcher.fetchMetadata(url);
+        console.log(`[SubmissionService] Attempting Puppeteer fetch (attempt ${attempt}/${this.maxRetries}) for URL: ${url}`);
+        const metadata = await this.metadataFetcher.fetchMetadata(url);
+        console.log(`[SubmissionService] Puppeteer fetch successful for URL: ${url}`);
+        return metadata;
       } catch (error) {
-        lastError = error;
+        lastPuppeteerError = error;
+        console.warn(`[SubmissionService] Puppeteer fetch failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
         
         // Don't retry on validation errors
         if (error.message.includes('Invalid URL') || error.message.includes('not allowed')) {
@@ -178,7 +193,43 @@ export class SubmissionService {
       }
     }
 
-    throw new Error(`Failed to fetch metadata after ${this.maxRetries} attempts: ${lastError.message}`);
+    // If Puppeteer fails and fallback is enabled, try the simple fetcher
+    if (this.useFallback && this.fallbackMetadataFetcher) {
+      console.log(`[SubmissionService] Puppeteer failed, attempting fallback fetch for URL: ${url}`);
+      
+      for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+        try {
+          const metadata = await this.fallbackMetadataFetcher.fetchMetadata(url);
+          console.log(`[SubmissionService] Fallback fetch successful for URL: ${url}`);
+          
+          // Add a flag to indicate this was fetched via fallback
+          metadata.fetchMethod = 'fallback';
+          metadata.puppeteerError = lastPuppeteerError.message;
+          
+          return metadata;
+        } catch (error) {
+          lastFallbackError = error;
+          console.warn(`[SubmissionService] Fallback fetch failed (attempt ${attempt}/${this.maxRetries}):`, error.message);
+          
+          // Don't retry on validation errors
+          if (error.message.includes('Invalid URL') || error.message.includes('not allowed')) {
+            throw error;
+          }
+
+          if (attempt < this.maxRetries) {
+            await this.sleep(this.retryDelay * attempt);
+          }
+        }
+      }
+    }
+
+    // If both methods fail, throw a comprehensive error
+    const errorMessage = this.useFallback && lastFallbackError
+      ? `Both Puppeteer and fallback methods failed. Puppeteer: ${lastPuppeteerError.message}. Fallback: ${lastFallbackError.message}`
+      : `Puppeteer failed after ${this.maxRetries} attempts: ${lastPuppeteerError.message}`;
+    
+    console.error(`[SubmissionService] All metadata fetch attempts failed for URL: ${url}`, errorMessage);
+    throw new Error(errorMessage);
   }
 
   /**
@@ -468,6 +519,9 @@ export class SubmissionService {
   async cleanup() {
     if (this.metadataFetcher && typeof this.metadataFetcher.cleanup === 'function') {
       await this.metadataFetcher.cleanup();
+    }
+    if (this.fallbackMetadataFetcher && typeof this.fallbackMetadataFetcher.cleanup === 'function') {
+      await this.fallbackMetadataFetcher.cleanup();
     }
     if (this.enhancedAIService && typeof this.enhancedAIService.cleanup === 'function') {
       await this.enhancedAIService.cleanup();
