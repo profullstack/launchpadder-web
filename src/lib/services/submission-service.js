@@ -337,7 +337,7 @@ export class SubmissionService {
           views_count,
           slug,
           tags,
-          profiles!submitted_by (
+          users!submitted_by (
             id,
             username,
             full_name,
@@ -408,7 +408,7 @@ export class SubmissionService {
         .from('submissions')
         .select(`
           *,
-          profiles!submitted_by (
+          users!submitted_by (
             id,
             username,
             full_name,
