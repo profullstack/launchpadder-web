@@ -6,6 +6,7 @@
 import { json, error } from '@sveltejs/kit';
 import { createSubmissionService } from '$lib/services/submission-service.js';
 import { supabase } from '$lib/config/supabase.js';
+import { createClient } from '@supabase/supabase-js';
 
 // Initialize submission service lazily
 let submissionService;
@@ -28,9 +29,27 @@ export async function POST({ request, locals }) {
   try {
     // Get user from session (assuming auth middleware sets this)
     const user = locals.user;
-    if (!user?.id) {
+    const session = locals.session;
+    if (!user?.id || !session) {
       throw error(401, 'Authentication required');
     }
+
+    // Create authenticated Supabase client with user session
+    const authenticatedSupabase = createClient(
+      process.env.PUBLIC_SUPABASE_URL,
+      process.env.PUBLIC_SUPABASE_ANON_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        }
+      }
+    );
 
     // Parse request body
     const body = await request.json();
@@ -38,7 +57,7 @@ export async function POST({ request, locals }) {
     // Handle free tier submissions
     if (body.submission_type === 'free') {
       // Check if user is admin using the database function
-      const { data: adminCheck, error: userError } = await supabase
+      const { data: adminCheck, error: userError } = await authenticatedSupabase
         .rpc('is_admin', { user_id: user.id });
 
       if (userError) {
@@ -53,7 +72,7 @@ export async function POST({ request, locals }) {
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-        const { data: todaySubmissions, error: countError } = await supabase
+        const { data: todaySubmissions, error: countError } = await authenticatedSupabase
           .from('submissions')
           .select('id')
           .eq('submitted_by', user.id)
@@ -75,8 +94,16 @@ export async function POST({ request, locals }) {
       body.payment_status = 'completed'; // Free submissions don't need payment
     }
     
+    // Create submission service with authenticated client
+    const submissionService = createSubmissionService({
+      supabase: authenticatedSupabase,
+      useEnhancedAI: false, // Disable AI for free submissions to avoid OpenAI API key requirement
+      aiRewriter: null, // Explicitly disable AI rewriter
+      enhancedAIService: null // Explicitly disable enhanced AI service
+    });
+    
     // Create submission
-    const submission = await getSubmissionService().createSubmission(body, user.id);
+    const submission = await submissionService.createSubmission(body, user.id);
     
     return json({
       success: true,
@@ -136,16 +163,46 @@ export async function GET({ url, locals }) {
 
     // Check if user wants their own submissions
     const mySubmissions = searchParams.get('my') === 'true';
+    let submissionService;
+    
     if (mySubmissions) {
       // Require authentication for user-specific submissions
       const user = locals.user;
-      if (!user?.id) {
+      const session = locals.session;
+      if (!user?.id || !session) {
         throw error(401, 'Authentication required');
       }
+      
+      // Create authenticated Supabase client for user-specific queries
+      const authenticatedSupabase = createClient(
+        process.env.PUBLIC_SUPABASE_URL,
+        process.env.PUBLIC_SUPABASE_ANON_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          global: {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          }
+        }
+      );
+      
+      submissionService = createSubmissionService({
+        supabase: authenticatedSupabase,
+        useEnhancedAI: false,
+        aiRewriter: null,
+        enhancedAIService: null
+      });
       
       // Filter by user and include all statuses for their own submissions
       options.user_id = user.id;
       options.status = searchParams.get('status') || 'all'; // Default to all statuses for user's own submissions
+    } else {
+      // Use default service for public submissions
+      submissionService = getSubmissionService();
     }
 
     // Handle tags parameter (comma-separated)
@@ -167,7 +224,7 @@ export async function GET({ url, locals }) {
     }
 
     // Get submissions
-    const result = await getSubmissionService().getSubmissions(options);
+    const result = await submissionService.getSubmissions(options);
     
     return json({
       success: true,
