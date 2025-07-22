@@ -317,7 +317,8 @@ export class SubmissionService {
       tags = [],
       search = '',
       sortBy = 'created_at',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      user_id = null
     } = options;
 
     try {
@@ -336,7 +337,7 @@ export class SubmissionService {
           views_count,
           slug,
           tags,
-          profiles:submitted_by (
+          profiles!submitted_by (
             id,
             username,
             full_name,
@@ -345,12 +346,17 @@ export class SubmissionService {
         `, { count: 'exact' });
 
       // Filter by status
-      if (status) {
+      if (status && status !== 'all') {
         if (Array.isArray(status)) {
           query = query.in('status', status);
         } else {
           query = query.eq('status', status);
         }
+      }
+
+      // Filter by user_id if provided
+      if (user_id) {
+        query = query.eq('submitted_by', user_id);
       }
 
       // Filter by tags

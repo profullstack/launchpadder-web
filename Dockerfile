@@ -4,7 +4,14 @@ FROM node:20-alpine AS base
 # Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat less postgresql-client bash curl
+RUN apk add --no-cache libc6-compat less postgresql-client bash curl \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 WORKDIR /app
 
@@ -31,6 +38,10 @@ ARG PUBLIC_SUPABASE_ANON_KEY
 ENV PUBLIC_SUPABASE_URL=$PUBLIC_SUPABASE_URL
 ENV PUBLIC_SUPABASE_ANON_KEY=$PUBLIC_SUPABASE_ANON_KEY
 
+# Puppeteer configuration for build stage
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Build the application
 RUN pnpm run build
 
@@ -38,12 +49,23 @@ RUN pnpm run build
 FROM base AS runner
 WORKDIR /app
 
-# Install runtime dependencies for entrypoint script
-RUN apk add --no-cache postgresql-client bash curl
+# Install runtime dependencies for entrypoint script and Puppeteer/Chrome
+RUN apk add --no-cache postgresql-client bash curl \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 ENV NODE_ENV=production
 # Disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Puppeteer configuration for Alpine Linux
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Accept build arguments for user/group IDs from host
 ARG USER_ID=1001

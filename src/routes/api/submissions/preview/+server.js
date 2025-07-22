@@ -73,6 +73,67 @@ export async function POST({ request }) {
       const originalMetadata = await submissionService.fetchMetadataWithRetry(url);
       console.log('[Preview API] Metadata fetched successfully');
       
+      // Prepare comprehensive image carousel data
+      const carouselImages = [];
+      
+      // Add primary logo if available
+      if (originalMetadata.logos?.primary) {
+        carouselImages.push({
+          url: originalMetadata.logos.primary,
+          type: 'logo',
+          title: 'Primary Logo',
+          description: 'Main website logo'
+        });
+      }
+      
+      // Add other logos
+      if (originalMetadata.logos?.sources) {
+        originalMetadata.logos.sources.slice(1).forEach((logo, index) => {
+          carouselImages.push({
+            url: logo.url,
+            type: 'logo',
+            title: `Logo ${index + 2}`,
+            description: `${logo.type} (${logo.width}x${logo.height})`
+          });
+        });
+      }
+      
+      // Add main images
+      if (originalMetadata.images?.sources) {
+        originalMetadata.images.sources.forEach((image, index) => {
+          carouselImages.push({
+            url: image.url,
+            type: 'image',
+            title: `Image ${index + 1}`,
+            description: `${image.type} image`
+          });
+        });
+      }
+      
+      // Add navbar screenshots
+      if (originalMetadata.screenshots) {
+        originalMetadata.screenshots.forEach((screenshot, index) => {
+          carouselImages.push({
+            url: screenshot.screenshotUrl,
+            type: 'screenshot',
+            title: `${screenshot.linkText} Link`,
+            description: `Screenshot of navbar link`
+          });
+        });
+      }
+      
+      // Add favicons as fallback
+      if (originalMetadata.favicons && carouselImages.length === 0) {
+        originalMetadata.favicons.slice(0, 3).forEach((favicon, index) => {
+          carouselImages.push({
+            url: favicon.url,
+            type: 'favicon',
+            title: `Favicon ${index + 1}`,
+            description: favicon.type
+          });
+        });
+      }
+
       // For preview, we'll use the original metadata directly (no AI enhancement for speed)
       const preview = {
         url,
@@ -80,8 +141,13 @@ export async function POST({ request }) {
         description: originalMetadata.description || 'No description available',
         images: {
           main: originalMetadata.images?.primary || originalMetadata.images?.sources?.[0]?.url || originalMetadata.image,
-          favicon: originalMetadata.favicons?.[0]?.url || originalMetadata.favicon
+          favicon: originalMetadata.favicons?.[0]?.url || originalMetadata.favicon,
+          carousel: carouselImages
         },
+        logos: originalMetadata.logos || null,
+        navbarLinks: originalMetadata.navbarLinks || [],
+        screenshots: originalMetadata.screenshots || [],
+        topicTags: originalMetadata.topicTags || [],
         aiEnhancements: null, // No AI enhancements for preview
         metadata: {
           original: originalMetadata,
