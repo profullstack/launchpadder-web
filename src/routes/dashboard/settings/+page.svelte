@@ -4,6 +4,7 @@
   import { _ } from 'svelte-i18n';
   import { isAuthenticated, userDisplayInfo, updateUserProfile } from '$lib/stores/auth.js';
   import { authApi, userApi } from '$lib/services/api-client.js';
+  import WebhookSettings from '$lib/components/WebhookSettings.svelte';
   
   let loading = true;
   let saving = false;
@@ -269,6 +270,9 @@
           </select>
         </div>
       </section>
+
+      <!-- Webhooks -->
+      <WebhookSettings />
 
       <!-- Security -->
       <section class="settings-section">

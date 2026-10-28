@@ -405,6 +405,56 @@ class WebhooksAPI {
   async delete(id) {
     return this.client.delete(`webhooks/${id}`);
   }
+
+  /**
+   * Get one webhook endpoint
+   * @param {string} id - Webhook ID
+   */
+  async get(id) {
+    return this.client.get(`webhooks/${id}`);
+  }
+
+  /**
+   * Update a webhook endpoint
+   * @param {string} id - Webhook ID
+   * @param {{url?: string, events?: string[], description?: string, enabled?: boolean}} patch
+   */
+  async update(id, patch) {
+    return this.client.put(`webhooks/${id}`, patch);
+  }
+
+  /**
+   * Rotate the signing secret; the old one stops working at once
+   * @param {string} id - Webhook ID
+   * @returns {Promise<{secret: string}>}
+   */
+  async rotateSecret(id) {
+    return this.client.post(`webhooks/${id}/rotate`, {});
+  }
+
+  /**
+   * Send a webhook.test event to the endpoint now
+   * @param {string} id - Webhook ID
+   */
+  async test(id) {
+    return this.client.post(`webhooks/${id}/test`, {});
+  }
+
+  /**
+   * Recent deliveries, for one endpoint or all of them
+   * @param {string} [id] - Webhook ID
+   */
+  async deliveries(id) {
+    return this.client.get(id ? `webhooks/${id}/deliveries` : 'webhooks/deliveries');
+  }
+
+  /**
+   * Queue a delivery again
+   * @param {string} deliveryId - Delivery ID
+   */
+  async redeliver(deliveryId) {
+    return this.client.post(`webhooks/deliveries/${deliveryId}/retry`, {});
+  }
 }
 
 /**

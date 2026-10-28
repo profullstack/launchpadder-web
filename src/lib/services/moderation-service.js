@@ -3,6 +3,8 @@
  * Handles content moderation, approval workflows, and admin management
  */
 
+import { emitSubmissionReviewed } from '../server/webhooks/hub.js';
+
 export class ModerationService {
   constructor(options = {}) {
     if (!options.supabase) {
@@ -101,6 +103,8 @@ export class ModerationService {
       if (reviewError) {
         console.error('Failed to record moderation review:', reviewError);
       }
+      
+      await emitSubmissionReviewed(submission, decision, notes);
       
       return submission;
       
@@ -371,6 +375,10 @@ export class ModerationService {
       
       if (reviewError) {
         console.error('Failed to record bulk moderation reviews:', reviewError);
+      }
+      
+      for (const submission of submissions || []) {
+        await emitSubmissionReviewed(submission, decision, notes);
       }
       
       return {

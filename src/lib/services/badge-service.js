@@ -15,6 +15,7 @@
  */
 
 import { createHash, randomBytes } from 'crypto';
+import { emitBadgeIssued } from '../server/webhooks/hub.js';
 
 export class BadgeService {
   constructor(supabaseClient) {
@@ -216,6 +217,13 @@ export class BadgeService {
         };
       }
 
+      await emitBadgeIssued(userId, {
+        user_badge_id: typeof data === 'string' ? data : null,
+        slug: badgeSlug,
+        assignment_type: assignmentType,
+        reason
+      });
+
       return {
         success: true,
         data
@@ -344,6 +352,9 @@ export class BadgeService {
 
       // Extract awarded badge slugs from the result
       const awardedBadges = data?.map(row => row.awarded_badge_slug).filter(Boolean) || [];
+      for (const slug of awardedBadges) {
+        await emitBadgeIssued(userId, { slug, assignment_type: 'automatic' });
+      }
 
       return {
         success: true,

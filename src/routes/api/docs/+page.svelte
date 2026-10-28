@@ -165,7 +165,7 @@
     
     <div class="info-card">
       <h3>🪝 Webhooks</h3>
-      <p>Real-time updates delivered via webhooks for submission status changes and federation events.</p>
+      <p>Signed CloudEvents (Standard Webhooks <code>webhook-signature</code>) for <code>submission.created</code>, <code>submission.approved</code>, <code>submission.rejected</code> and <code>badge.issued</code>. Manage endpoints at <code>/api/v1/webhooks</code> or in Dashboard → Settings.</p>
     </div>
     
     <div class="info-card">
