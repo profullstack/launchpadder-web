@@ -66,27 +66,27 @@ function serviceClient() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-const KEY = Symbol.for('launchpadder.webhooks.hub');
+/** @type {Webhooks | null | undefined} undefined = not built yet */
+let hub;
 
 /**
  * The process-wide hub, or null when the service role key is not configured
  * (webhooks are then off: emits are dropped and the API answers 503).
- * Kept on globalThis so every bundled chunk shares one instance and the one
- * that called start() is the one that drains.
+ * SvelteKit bundles this module once for hooks and routes, so a module-level
+ * instance is shared and the one init() started is the one that drains.
  * @returns {Webhooks | null}
  */
 export function getHooks() {
-  const g = globalThis;
-  if (g[KEY] === undefined) {
+  if (hub === undefined) {
     const client = serviceClient();
-    g[KEY] = client ? createHooks(supabaseStore(client)) : null;
+    hub = client ? createHooks(supabaseStore(client)) : null;
   }
-  return g[KEY];
+  return hub;
 }
 
 /** Replace the hub (tests). Pass undefined to reset to the lazy default. */
 export function setHooks(hooks) {
-  globalThis[KEY] = hooks;
+  hub = hooks;
 }
 
 /** Start the background drainer once per server process. */

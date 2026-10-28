@@ -7,7 +7,7 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import { createHmac } from 'crypto';
 import jwt from 'jsonwebtoken';
-import { verifySignature, webhooksApi } from '@profullstack/webhooks';
+import { generateSecret, verifySignature, webhooksApi } from '@profullstack/webhooks';
 import { supabaseStore, HUB_TABLES } from '../../src/lib/server/webhooks/supabase-store.js';
 import {
   createHooks,
@@ -45,7 +45,7 @@ const endpointRow = (over = {}) => ({
   id: 'wh_1',
   owner: USER,
   url: HOOK_URL,
-  secret: 'whsec_dGVzdA==',
+  secret: generateSecret(),
   events: JSON.stringify(['*']),
   description: '',
   enabled: 1,
@@ -61,7 +61,7 @@ describe('webhooks: supabase store', () => {
     const sb = fakeSupabase();
     const store = supabaseStore(sb);
     const ep = {
-      id: 'wh_1', owner: USER, url: HOOK_URL, secret: 'whsec_abc=', events: ['submission.*'],
+      id: 'wh_1', owner: USER, url: HOOK_URL, secret: generateSecret(), events: ['submission.*'],
       description: '', enabled: true, failures: 0, disabledReason: null, createdAt: 1000, updatedAt: 1000
     };
     await store.insertEndpoint(ep);
