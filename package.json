@@ -1,6 +1,6 @@
 {
   "name": "api-driven-launch-platform",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An open-source, API-first, and distributed/federated platform for launching digital products",
   "type": "module",
   "engines": {
@@ -28,6 +28,7 @@
     "db:seed": "node scripts/seed.js"
   },
   "dependencies": {
+    "@profullstack/webhooks": "0.2.1",
     "@stripe/stripe-js": "^7.4.0",
     "@supabase/supabase-js": "^2.39.0",
     "@sveltejs/kit": "^2.0.0",

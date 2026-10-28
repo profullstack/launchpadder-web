@@ -7,6 +7,7 @@ import { PuppeteerMetadataFetcher } from './puppeteer-metadata-fetcher.js';
 import { SimpleMetadataFetcher } from './simple-metadata-fetcher.js';
 import { createAIRewriter } from './ai-rewriter.js';
 import { createEnhancedAIService } from './enhanced-ai-service.js';
+import { emitSubmissionCreated, emitBadgesIssuedSince } from '../server/webhooks/hub.js';
 
 export class SubmissionService {
   constructor(options = {}) {
@@ -154,6 +155,14 @@ export class SubmissionService {
           throw new Error('URL has already been submitted');
         }
         throw new Error(`Failed to create submission: ${error.message}`);
+      }
+
+      // Customer webhooks: submission.created, then any badge the
+      // check_badges_after_submission trigger awarded in the same transaction
+      // (earned_at = the insert's now(), which is the row's created_at).
+      await emitSubmissionCreated(data);
+      if (data?.created_at) {
+        void emitBadgesIssuedSince(userId, data.created_at);
       }
 
       return data;

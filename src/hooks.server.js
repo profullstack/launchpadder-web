@@ -3,6 +3,16 @@ import { createRequestTracingMiddleware } from '$lib/middleware/request-tracing.
 import { errorHandler } from '$lib/services/error-handler.js';
 import { logger } from '$lib/services/logger.js';
 import { createClient } from '@supabase/supabase-js';
+import { building } from '$app/environment';
+import { startWebhooks } from '$lib/server/webhooks/hub.js';
+
+/**
+ * Runs once when the server starts (not per request, not while building):
+ * start the customer-webhook drainer.
+ */
+export async function init() {
+  if (!building) startWebhooks();
+}
 
 // Create request tracing middleware
 const requestTracing = createRequestTracingMiddleware({
